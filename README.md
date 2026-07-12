@@ -48,7 +48,7 @@ No backend, no database, no server permissions — the extension only generates
 links in the browser from data the panel already exposes (`/apps/:id`,
 `/servers/:id`, `/wordpress/sites/:id`).
 
-## Build & release
+## Build (local)
 
 ```bash
 cd frontend
@@ -58,12 +58,31 @@ npm test               # unit-tests the faro:// link builder
 
 # from the repo root — stage + zip the release artifact
 ./scripts/build-zip.sh # → dist/serverkit-faro-<version>.zip
-sha256sum dist/serverkit-faro-*.zip
 ```
 
-Attach the zip to a GitHub release, record its sha256, and add/update the
-entry in `serverkit-extensions/index.json` (`bundled: false`, with `source`
-pointing at the release asset and the recorded `sha256`).
+## Releasing
+
+Releases are automated by GitHub Actions — no manual zip building or uploading.
+`plugin.json`'s `version` is the single source of truth.
+
+- **Stable release** — bump `version` in `plugin.json`, open a PR from `dev`
+  → `main`, and merge it. The [`Create Release`](.github/workflows/release.yml)
+  workflow reads the new version, builds `frontend/dist/index.mjs`, zips the
+  artifact, tags `v<version>`, and publishes a GitHub Release with the zip and
+  its `sha256` attached. (Merging without bumping the version is a no-op — the
+  existing tag is detected and the release is skipped.)
+- **Beta release** — push to `dev` (or run the
+  [`Create Beta Release`](.github/workflows/beta-release.yml) workflow manually).
+  It auto-increments a `v<version>-beta.N` **prerelease** off the current
+  `plugin.json` base version.
+- **CI** — every PR to `main`/`dev` runs
+  [`CI`](.github/workflows/ci.yml): `npm ci && npm run build && npm test` plus a
+  zip-build smoke check.
+
+After a stable release, add/update the entry in
+[`serverkit-extensions`](https://github.com/jhd3197/serverkit-extensions)
+`index.json` (`bundled: false`, `source` pointing at the release asset, with the
+release's recorded `sha256`).
 
 ## License
 
