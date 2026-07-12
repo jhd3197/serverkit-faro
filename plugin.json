@@ -1,7 +1,7 @@
 {
   "name": "serverkit-faro",
   "display_name": "Faro",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "One-click Open in Faro. Adds a Connect with Faro button to Services, Domains, and WordPress sites that opens the Faro desktop client prefilled to SFTP into that site's web root, via faro:// deep links. No credentials ever leave the panel: a link only prefills Faro's connection editor for the user to review and connect.",
   "author": "Juan Denis",
   "homepage": "https://github.com/jhd3197/serverkit-faro",
