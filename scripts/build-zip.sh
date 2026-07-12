@@ -38,7 +38,7 @@ rm -f "$ZIP_PATH"
 # Build the exclude list for `zip -x`. Mirror what the panel's installer
 # also strips, but cleaner bundles are nicer on download.
 EXCLUDES=(
-    ".git/*" ".github/*" "node_modules/*" "__pycache__/*"
+    ".git/*" ".github/*" "node_modules/*" "*/node_modules/*" "__pycache__/*"
     ".venv/*" "venv/*" "dist/*" "build/*" ".pytest_cache/*"
     ".idea/*" ".vscode/*" "scripts/*"
     "*.pyc" "*.pyo" "*.log"
