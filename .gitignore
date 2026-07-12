@@ -1,0 +1,22 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+.env
+.env.local
+.DS_Store
+Thumbs.db
+node_modules/
+build/
+*.log
+.vscode/
+.idea/
+
+# Built plugin bundles + the runtime ESM output — produced at release time by
+# scripts/build-zip.{ps1,sh}; the zip carries them, git does not.
+dist/
+frontend/dist/
+*.zip

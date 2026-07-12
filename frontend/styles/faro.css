@@ -1,0 +1,77 @@
+/* serverkit-faro — slot panel styling.
+ * Self-contained; references panel design tokens with safe fallbacks so it
+ * theme-matches ServerKit (light/dark) without depending on the panel's SCSS. */
+
+.skfaro {
+    margin-top: 16px;
+    padding: 16px;
+    border: 1px solid var(--border, #2a2a35);
+    border-radius: var(--radius, 10px);
+    background: var(--bg-card, #16161d);
+}
+
+.skfaro__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    color: var(--text, #e6e6ef);
+}
+
+.skfaro__title {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.skfaro__head .skfaro-btn__icon {
+    color: var(--accent-primary, #6d8bff);
+}
+
+.skfaro__note {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--text, #e6e6ef);
+}
+
+.skfaro__note--muted {
+    color: var(--text-dim, #9a9aa8);
+}
+
+.skfaro-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border: 1px solid var(--accent-primary, #6d8bff);
+    border-radius: var(--radius-sm, 8px);
+    background: var(--accent-primary, #6d8bff);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: filter 0.12s ease;
+}
+
+.skfaro-btn:hover {
+    filter: brightness(1.08);
+}
+
+.skfaro-btn__icon {
+    flex: none;
+}
+
+.skfaro__hint {
+    margin: 8px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-dim, #9a9aa8);
+}
+
+.skfaro__hint code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--surface, rgba(255, 255, 255, 0.06));
+    color: var(--text-code, var(--text, #e6e6ef));
+    font-size: 11px;
+}
