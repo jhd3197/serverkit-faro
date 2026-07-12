@@ -1,0 +1,149 @@
+name: Create Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+jobs:
+  # Figure out which version we're releasing and whether it's new.
+  # Source of truth is plugin.json's "version" (bumped in the dev -> main PR).
+  # A tag push (vX.Y.Z) overrides it. If the tag already exists we skip the
+  # build entirely, so a merge to main that doesn't bump the version is a no-op.
+  prepare:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip release]')"
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      tag: ${{ steps.get_version.outputs.tag }}
+      proceed: ${{ steps.check.outputs.proceed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: get_version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG_NAME#v}
+            echo "Source: tag push ($TAG_NAME)"
+          else
+            VERSION=$(jq -r '.version' plugin.json)
+            TAG_NAME="v$VERSION"
+            echo "Source: plugin.json ($VERSION)"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "Release version: $VERSION (tag $TAG_NAME)"
+
+      - name: Check whether tag already released
+        id: check
+        run: |
+          TAG="${{ steps.get_version.outputs.tag }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists — nothing to release. Bump plugin.json to cut a new one."
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Tag $TAG is new — proceeding with release."
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  release:
+    needs: prepare
+    if: needs.prepare.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies and build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+          npm test
+
+      - name: Sync frontend/package.json version
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          node -e "const fs=require('fs'),p='frontend/package.json',j=JSON.parse(fs.readFileSync(p));j.version='$VERSION';fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n')"
+
+      - name: Build release zip
+        run: bash scripts/build-zip.sh
+
+      - name: Locate zip
+        id: zip
+        run: |
+          ZIP=$(ls dist/serverkit-faro-*.zip | head -1)
+          echo "path=$ZIP" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(sha256sum "$ZIP" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          echo "Built $ZIP"
+
+      - name: Generate release notes
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          TAG="${{ needs.prepare.outputs.tag }}"
+
+          # Previous stable tag (exclude betas), for the changelog range.
+          PREV_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | grep -v beta | sort -V | tail -1)
+
+          {
+            echo "## Faro v$VERSION"
+            echo ""
+            if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "$TAG" ]; then
+              echo "### Changes since $PREV_TAG"
+              echo ""
+              git log "$PREV_TAG"..HEAD --pretty=format:"- %s" --no-merges | head -50
+            else
+              echo "Initial stable release."
+            fi
+            echo ""
+            echo ""
+            echo "---"
+            echo "\`sha256: ${{ steps.zip.outputs.sha256 }}\`"
+            echo ""
+            echo "Install via the ServerKit panel → Marketplace → Plugins → Upload Zip,"
+            echo "or add this release asset to the \`serverkit-extensions\` registry."
+          } > release_notes.md
+
+          cat release_notes.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: Faro ${{ needs.prepare.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          files: ${{ steps.zip.outputs.path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          {
+            echo "## Release Created"
+            echo ""
+            echo "- **Version:** ${{ needs.prepare.outputs.version }}"
+            echo "- **Tag:** ${{ needs.prepare.outputs.tag }}"
+            echo "- **Zip:** ${{ steps.zip.outputs.path }}"
+            echo "- **sha256:** \`${{ steps.zip.outputs.sha256 }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,161 @@
+name: Create Beta Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+'
+    branches:
+      - dev
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Full version (e.g. 1.0.1-beta.1). Leave empty to auto-increment the beta number.'
+        required: false
+      description:
+        description: 'Beta release description'
+        required: false
+        default: 'Beta release for testing'
+
+permissions:
+  contents: write
+
+jobs:
+  beta-release:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip release]')"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: get_version
+        run: |
+          # Triggered by a beta tag push -> use it verbatim.
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG_NAME#v}
+            echo "Source: tag push"
+
+          # Manual trigger with an explicit version.
+          elif [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            echo "Source: manual input"
+
+          # Otherwise take the base version from plugin.json and auto-increment
+          # the beta number past whatever betas already exist for it.
+          else
+            BASE_VERSION=$(jq -r '.version' plugin.json)
+            # Strip any pre-release suffix so a plugin.json already at X.Y.Z-beta.N
+            # still yields a clean base.
+            BASE_VERSION=${BASE_VERSION%%-*}
+
+            LAST_BETA=$(git tag -l "v${BASE_VERSION}-beta.*" | grep -oE 'beta\.[0-9]+$' | grep -oE '[0-9]+$' | sort -n | tail -1)
+            if [ -z "$LAST_BETA" ]; then
+              BETA_NUM=1
+            else
+              BETA_NUM=$((LAST_BETA + 1))
+            fi
+
+            VERSION="${BASE_VERSION}-beta.${BETA_NUM}"
+            echo "Source: auto-increment (base $BASE_VERSION, beta $BETA_NUM)"
+          fi
+
+          TAG="v$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Beta version: $VERSION"
+
+      - name: Fail if tag already exists (non-tag triggers)
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        run: |
+          if git rev-parse "${{ steps.get_version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "::error::Tag ${{ steps.get_version.outputs.tag }} already exists!"
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies and build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+          npm test
+
+      - name: Stamp beta version into manifests
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          # Embed the beta version in the shipped plugin.json (drives the zip
+          # name via scripts/build-zip.sh) and keep frontend/package.json in sync.
+          node -e "for(const p of ['plugin.json','frontend/package.json']){const fs=require('fs'),j=JSON.parse(fs.readFileSync(p));j.version='$VERSION';fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n')}"
+
+      - name: Build release zip
+        run: bash scripts/build-zip.sh
+
+      - name: Locate zip
+        id: zip
+        run: |
+          ZIP=$(ls dist/serverkit-faro-*.zip | head -1)
+          echo "path=$ZIP" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(sha256sum "$ZIP" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          echo "Built $ZIP"
+
+      - name: Prepare release notes
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          DESCRIPTION="${{ github.event.inputs.description }}"
+          if [ -z "$DESCRIPTION" ]; then
+            DESCRIPTION="Beta release for testing new features."
+          fi
+
+          {
+            echo "## Faro $VERSION (Beta)"
+            echo ""
+            echo "⚠️ **This is a pre-release version for testing purposes.**"
+            echo ""
+            echo "### Description"
+            echo "$DESCRIPTION"
+            echo ""
+            echo "### Install"
+            echo "ServerKit panel → Marketplace → Plugins → Upload Zip, then pick the"
+            echo "attached \`serverkit-faro-$VERSION.zip\`."
+            echo ""
+            echo "### Feedback"
+            echo "Report issues at: https://github.com/${{ github.repository }}/issues"
+            echo ""
+            echo "---"
+            echo "\`sha256: ${{ steps.zip.outputs.sha256 }}\`"
+            echo "Commit: \`${{ github.sha }}\`"
+          } > release_notes.md
+
+          cat release_notes.md
+
+      - name: Create Pre-Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.tag }}
+          name: Faro ${{ steps.get_version.outputs.version }} (Beta)
+          body_path: release_notes.md
+          draft: false
+          prerelease: true
+          files: ${{ steps.zip.outputs.path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          {
+            echo "## Beta Release Created"
+            echo ""
+            echo "- **Version:** ${{ steps.get_version.outputs.version }}"
+            echo "- **Tag:** ${{ steps.get_version.outputs.tag }}"
+            echo "- **Zip:** ${{ steps.zip.outputs.path }}"
+            echo "- **sha256:** \`${{ steps.zip.outputs.sha256 }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
