@@ -20,8 +20,9 @@ import WordPressFaroPanel from './components/WordPressFaroPanel.jsx';
 // drop in beside en.json with one addResourceBundle line each.
 import i18next from 'i18next';
 import en from './locales/en.json';
+import es from './locales/es.json';
 
-for (const [language, bundle] of Object.entries({ en })) {
+for (const [language, bundle] of Object.entries({ en, es })) {
     i18next.addResourceBundle(language, 'translation', bundle, true, false);
 }
 

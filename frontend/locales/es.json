@@ -1,0 +1,13 @@
+{
+    "faro": {
+        "faroConnectButton": {
+            "couldnTLoadConnectionDetailsFor": "No se pudieron cargar los datos de conexión de este elemento.",
+            "faro": "Faro",
+            "noPasswordIsSentYouReview": "No se envía ninguna contraseña: revisas y conectas en Faro.",
+            "noReachableHostForThisItem": "Todavía no hay un host accesible para este elemento: la conexión con Faro no está disponible.",
+            "openInFaro": "Abrir en Faro",
+            "opensFaroSConnectionEditorPrefilled": "Abre el editor de conexiones de Faro precargado para",
+            "resolvingConnectionDetails": "Resolviendo los datos de conexión…"
+        }
+    }
+}
