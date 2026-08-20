@@ -10,6 +10,23 @@ import ServiceFaroPanel from './components/ServiceFaroPanel.jsx';
 import DomainFaroPanel from './components/DomainFaroPanel.jsx';
 import WordPressFaroPanel from './components/WordPressFaroPanel.jsx';
 
+// Translations. Registered against the PANEL's i18next singleton (shared via
+// its vendor import map), additively and under this extension's own
+// `faro` namespace — never init() or changeLanguage(), which the panel
+// owns and which would reconfigure or switch the language everywhere.
+//
+// The English bundle is generated from the inline t('key', 'English')
+// defaults, so a key with no bundle still renders its default. More locales
+// drop in beside en.json with one addResourceBundle line each.
+import i18next from 'i18next';
+import en from './locales/en.json';
+import es from './locales/es.json';
+
+for (const [language, bundle] of Object.entries({ en, es })) {
+    i18next.addResourceBundle(language, 'translation', bundle, true, false);
+}
+
+
 if (typeof document !== 'undefined' && !document.getElementById('serverkit-faro-styles')) {
     const style = document.createElement('style');
     style.id = 'serverkit-faro-styles';

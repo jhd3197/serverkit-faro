@@ -2,15 +2,28 @@
   "name": "serverkit-faro",
   "display_name": "Faro",
   "version": "1.0.2",
-  "description": "One-click Open in Faro. Adds a Connect with Faro button to Services, Domains, and WordPress sites that opens the Faro desktop client prefilled to SFTP into that site's web root, via faro:// deep links. No credentials ever leave the panel: a link only prefills Faro's connection editor for the user to review and connect.",
+  "description": "One-click Open in Faro, plus time-boxed access grants. Adds a Connect with Faro button to Services, Domains, and WordPress sites that opens the Faro desktop client prefilled to SFTP into that site's web root, via faro:// deep links — no credentials ever leave the panel: a link only prefills Faro's connection editor. It can also issue Faro access grants (faro://grant): hand someone revocable, key-based SSH/SFTP access to a bundle of managed servers with a single link — Faro fetches the grant manifest from this panel, uploads a freshly-generated public key after the user accepts, and this extension installs that key on the granted servers. Revoking the grant removes the key; the owner's own credentials are never touched.",
   "author": "Juan Denis",
   "homepage": "https://github.com/jhd3197/serverkit-faro",
   "repository": "https://github.com/jhd3197/serverkit-faro",
   "license": "MIT",
   "category": "utility",
   "frontend_entry": "dist/index.mjs",
-  "sdk_version": "^1.0.0",
+  "sdk_version": "^1.3.0",
   "min_panel_version": "1.7.0",
+  "entry_point": "grants:bp",
+  "url_prefix": "/api/v1/faro-grants",
+  "models": "models:register",
+  "permissions": ["db", "agent.command:file:read", "agent.command:file:write"],
+  "jobs": [
+    { "kind": "faro.expire_grants", "handler": "jobs:expire_grants" }
+  ],
+  "schedules": [
+    { "name": "faro-expire-grants", "kind": "faro.expire_grants", "interval_seconds": 300 }
+  ],
+  "config_schema": {
+    "public_rate_per_min": { "type": "integer", "default": 30, "title": "Public endpoint rate limit (per minute)", "description": "Per-client-IP token-bucket cap on the two unauthenticated faro-grant protocol endpoints." }
+  },
   "featured": true,
   "feature_score": 90,
   "logo": "assets/logo.png",

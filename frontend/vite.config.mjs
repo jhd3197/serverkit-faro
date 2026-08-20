@@ -6,9 +6,13 @@ import react from '@vitejs/plugin-react';
 // singletons via the import map — never bundle React (a second copy crashes
 // hooks). Emits one self-contained dist/index.mjs; CSS is inlined via the
 // runtime entry's `?inline` import, so there is no separate stylesheet asset.
+// i18next/react-i18next are external for the same reason React is: a
+// second copy is a SEPARATE, uninitialised instance, so every t() here
+// would silently render its English default forever. The panel shares
+// them through its import map (SDK >= 1.3.0).
 const EXTERNAL = [
     'react', 'react-dom', 'react-dom/client', 'react/jsx-runtime',
-    'react-router-dom', 'serverkit-sdk',
+    'react-router-dom', 'i18next', 'react-i18next', 'serverkit-sdk',
 ];
 
 export default defineConfig({
