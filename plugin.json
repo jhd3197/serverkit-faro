@@ -9,7 +9,7 @@
   "license": "MIT",
   "category": "utility",
   "frontend_entry": "dist/index.mjs",
-  "sdk_version": "^1.0.0",
+  "sdk_version": "^1.3.0",
   "min_panel_version": "1.7.0",
   "entry_point": "grants:bp",
   "url_prefix": "/api/v1/faro-grants",

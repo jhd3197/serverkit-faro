@@ -1,0 +1,13 @@
+{
+    "faro": {
+        "faroConnectButton": {
+            "couldnTLoadConnectionDetailsFor": "Couldn’t load connection details for this item.",
+            "faro": "Faro",
+            "noPasswordIsSentYouReview": "No password is sent — you review and connect in Faro.",
+            "noReachableHostForThisItem": "No reachable host for this item yet — Faro connect is unavailable.",
+            "openInFaro": "Open in Faro",
+            "opensFaroSConnectionEditorPrefilled": "Opens Faro’s connection editor prefilled for",
+            "resolvingConnectionDetails": "Resolving connection details…"
+        }
+    }
+}
