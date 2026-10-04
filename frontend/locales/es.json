@@ -1,6 +1,7 @@
 {
     "faro": {
         "faroConnectButton": {
+            "at": "en",
             "couldnTLoadConnectionDetailsFor": "No se pudieron cargar los datos de conexión de este elemento.",
             "faro": "Faro",
             "noPasswordIsSentYouReview": "No se envía ninguna contraseña: revisas y conectas en Faro.",

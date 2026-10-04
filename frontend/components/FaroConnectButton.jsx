@@ -41,13 +41,13 @@ export default function FaroConnectButton({ target, loading, error }) {
 
             {!loading && error && (
                 <p className="skfaro__note skfaro__note--muted">
-                    {t('faro.faroConnectButton.couldnTLoadConnectionDetailsFor', 'Couldn’t load connection details for this item.')}
+                    {t('faro.faroConnectButton.couldnTLoadConnectionDetailsFor', "Couldn't load connection details for this item.")}
                 </p>
             )}
 
             {!loading && !error && !url && (
                 <p className="skfaro__note skfaro__note--muted">
-                    {t('faro.faroConnectButton.noReachableHostForThisItem', 'No reachable host for this item yet — Faro connect is unavailable.')}
+                    {t('faro.faroConnectButton.noReachableHostForThisItem', 'No reachable host for this item yet, so Faro connect is unavailable.')}
                 </p>
             )}
 
@@ -58,10 +58,10 @@ export default function FaroConnectButton({ target, loading, error }) {
                         {t('faro.faroConnectButton.openInFaro', 'Open in Faro')}
                     </a>
                     <p className="skfaro__hint">
-                        {t('faro.faroConnectButton.opensFaroSConnectionEditorPrefilled', 'Opens Faro’s connection editor prefilled for')}
+                        {t('faro.faroConnectButton.opensFaroSConnectionEditorPrefilled', "Opens Faro's connection editor prefilled for")}
                         {' '}<code>{target.host}</code>
-                        {target.path ? <> at <code>{target.path}</code></> : null}.
-                        {' '}{t('faro.faroConnectButton.noPasswordIsSentYouReview', 'No password is sent — you review and connect in Faro.')}
+                        {target.path ? <> {t('faro.faroConnectButton.at', 'at')} <code>{target.path}</code></> : null}.
+                        {' '}{t('faro.faroConnectButton.noPasswordIsSentYouReview', 'No password is sent. You review and connect in Faro.')}
                     </p>
                 </>
             )}
