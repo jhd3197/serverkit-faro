@@ -11,8 +11,11 @@ outside the panel process. Everything here is deterministic string/dict work:
   specified in Faro's ``docs/grant-links.md`` — the Faro Rust client has a
   test parsing the spec verbatim)
 * ``faro://grant`` link construction
-* idempotent ``authorized_keys`` line add/remove helpers
+* the authorized_keys options and tagged key line a grant installs (the
+  agent's ``ssh:keys:*`` actions do the actual file edit)
 """
+import base64
+import binascii
 import hashlib
 import re
 import secrets
@@ -36,6 +39,13 @@ _BLOB_RE = re.compile(r'^[A-Za-z0-9+/]+={0,2}$')
 #: RSA blob is ~736. Anything outside this window is not a plausible key.
 _BLOB_MIN_LEN = 40
 _BLOB_MAX_LEN = 2048
+
+#: POSIX login name — same rule the agent's ssh:keys handlers enforce.
+_USERNAME_RE = re.compile(r'^[a-z_][a-z0-9_-]{0,31}$')
+
+#: Hostname, IPv4 or IPv6 literal (no quotes/commas/whitespace, so it can be
+#: embedded in a quoted authorized_keys option).
+_HOST_RE = re.compile(r'^[A-Za-z0-9.:-]{1,253}$')
 
 
 def new_token():
@@ -143,39 +153,68 @@ def build_faro_link(panel_url, token, name):
     return f'faro://grant?{query}'
 
 
-def authorized_keys_add(content, key_line):
-    """Return ``content`` with ``key_line`` appended, idempotently.
+def validate_username(username):
+    """Validate an SSH login name (portable POSIX shape, same rule the agent
+    enforces). Returns it, or raises ``ValueError``."""
+    if not isinstance(username, str) or not _USERNAME_RE.match(username):
+        raise ValueError('ssh_username must be a lowercase POSIX login name '
+                         '(letters, digits, "_" or "-", max 32)')
+    return username
 
-    Matching is on the key material (type + blob), so a line whose comment
-    differs still counts as present. Existing content is preserved verbatim.
+
+def validate_host(host):
+    """A hostname / IPv4 / IPv6 literal safe to embed in a quoted
+    authorized_keys option. Returns it, or raises ``ValueError``."""
+    if not isinstance(host, str) or not _HOST_RE.match(host):
+        raise ValueError(f'invalid host: {host!r}')
+    return host
+
+
+def grant_key_line(public_key, grant_id):
+    """The key line installed for a grant: the uploaded key material with
+    its comment replaced by ``faro-grant:<id>``, so an admin reading an
+    authorized_keys file can tell exactly which grant a line belongs to."""
+    key_type, blob = public_key.split()[:2]
+    return f'{key_type} {blob} faro-grant:{grant_id}'
+
+
+def key_fingerprint(public_key):
+    """OpenSSH-style ``SHA256:...`` fingerprint of a key line, or None."""
+    if not public_key:
+        return None
+    try:
+        blob = base64.b64decode(public_key.split()[1], validate=True)
+    except (IndexError, ValueError, binascii.Error):
+        return None
+    digest = base64.b64encode(hashlib.sha256(blob).digest()).decode('ascii')
+    return 'SHA256:' + digest.rstrip('=')
+
+
+def _hostport(host, port=22):
+    return f'[{host}]:{port}' if ':' in host else f'{host}:{port}'
+
+
+def target_key_options(jump_host=None, restrict_source=False):
+    """authorized_keys options for a key on a granted (target) server.
+
+    Agent and X11 forwarding are never needed for SFTP/terminal use. With a
+    bridge and ``restrict_source``, ``from=`` makes the target accept the key
+    only from the bridge's address.
     """
-    key_line = key_line.strip()
-    target = key_line.split()[:2]
-    base = content or ''
-    for line in base.splitlines():
-        if line.strip() and line.split()[:2] == target:
-            return base
-    if base and not base.endswith('\n'):
-        base += '\n'
-    return base + key_line + '\n'
+    options = ['no-agent-forwarding', 'no-X11-forwarding']
+    if restrict_source and jump_host:
+        options.append(f'from="{validate_host(jump_host)}"')
+    return options
 
 
-def authorized_keys_remove(content, key_line):
-    """Return ``content`` with every occurrence of the key removed.
-
-    Matching is on the key material (type + blob), so comment edits by an
-    admin don't defeat revocation. A no-op returns the content unchanged.
-    """
-    if not content:
-        return ''
-    target = key_line.strip().split()[:2]
-    lines = content.splitlines()
-    kept = [line for line in lines
-            if not (line.strip() and line.split()[:2] == target)]
-    if len(kept) == len(lines):
-        return content
-    out = '\n'.join(kept)
-    return (out + '\n') if out.strip() else ''
+def jump_key_options(target_hosts):
+    """authorized_keys options for the key on the bridge (jump) server: no
+    shell, no forwarding except TCP to port 22 of the granted servers, so the
+    grant key can't use the bridge to reach anything else."""
+    options = ['no-pty', 'no-agent-forwarding', 'no-X11-forwarding']
+    for host in target_hosts:
+        options.append(f'permitopen="{_hostport(validate_host(host))}"')
+    return options
 
 
 def _host_of(panel_url):

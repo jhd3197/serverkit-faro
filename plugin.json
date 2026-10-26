@@ -14,7 +14,7 @@
   "entry_point": "grants:bp",
   "url_prefix": "/api/v1/faro-grants",
   "models": "models:register",
-  "permissions": ["db", "agent.command:file:read", "agent.command:file:write"],
+  "permissions": ["db", "agent.command:ssh:keys:add", "agent.command:ssh:keys:remove"],
   "jobs": [
     { "kind": "faro.expire_grants", "handler": "jobs:expire_grants" }
   ],

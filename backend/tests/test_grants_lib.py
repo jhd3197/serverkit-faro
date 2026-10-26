@@ -159,56 +159,53 @@ class BuildFaroLinkTests(unittest.TestCase):
             link)
 
 
-class AuthorizedKeysTests(unittest.TestCase):
-    OTHER = 'ssh-ed25519 ' + 'C' * 68 + ' someone-else'
+class ValidationTests(unittest.TestCase):
+    def test_usernames(self):
+        for ok in ('root', 'deploy', 'faro_grant', 'a-1'):
+            self.assertEqual(grants_lib.validate_username(ok), ok)
+        for bad in ('', '../etc', 'Root', '-x', 'a b', 'a/b', 'a' * 33, None):
+            with self.assertRaises(ValueError):
+                grants_lib.validate_username(bad)
 
-    def test_add_to_empty(self):
-        out = grants_lib.authorized_keys_add('', ED25519)
-        self.assertEqual(out, ED25519 + '\n')
+    def test_hosts(self):
+        for ok in ('10.0.0.5', 'web-1.example.com', '2001:db8::1'):
+            self.assertEqual(grants_lib.validate_host(ok), ok)
+        for bad in ('', 'a b', 'h"ost', 'a,b', None):
+            with self.assertRaises(ValueError):
+                grants_lib.validate_host(bad)
 
-    def test_add_appends_and_fixes_missing_newline(self):
-        out = grants_lib.authorized_keys_add(self.OTHER, ED25519)
-        self.assertEqual(out, self.OTHER + '\n' + ED25519 + '\n')
 
-    def test_add_is_idempotent(self):
-        once = grants_lib.authorized_keys_add(self.OTHER + '\n', ED25519)
-        twice = grants_lib.authorized_keys_add(once, ED25519)
-        self.assertEqual(once, twice)
-        self.assertEqual(twice.count(ED25519.split()[1]), 1)
+class KeyOptionTests(unittest.TestCase):
+    def test_grant_key_line_retags_comment(self):
+        blob = ED25519.split()[1]
+        self.assertEqual(grants_lib.grant_key_line(ED25519, 7),
+                         f'ssh-ed25519 {blob} faro-grant:7')
 
-    def test_add_matches_on_key_material_not_comment(self):
-        same_key_other_comment = ('ssh-ed25519 ' + ED25519.split()[1]
-                                  + ' different-comment')
-        content = ED25519 + '\n'
-        self.assertEqual(
-            grants_lib.authorized_keys_add(content, same_key_other_comment),
-            content)
+    def test_fingerprint(self):
+        blob = ED25519.split()[1]
+        import base64
+        expected = 'SHA256:' + base64.b64encode(
+            hashlib.sha256(base64.b64decode(blob)).digest()).decode().rstrip('=')
+        self.assertEqual(grants_lib.key_fingerprint(ED25519), expected)
+        self.assertIsNone(grants_lib.key_fingerprint(None))
+        self.assertIsNone(grants_lib.key_fingerprint('ssh-ed25519 !!!'))
 
-    def test_remove(self):
-        content = self.OTHER + '\n' + ED25519 + '\n'
-        out = grants_lib.authorized_keys_remove(content, ED25519)
-        self.assertEqual(out, self.OTHER + '\n')
+    def test_target_options(self):
+        self.assertEqual(grants_lib.target_key_options(),
+                         ['no-agent-forwarding', 'no-X11-forwarding'])
+        # restrict_source without a bridge adds nothing
+        self.assertEqual(grants_lib.target_key_options(None, True),
+                         ['no-agent-forwarding', 'no-X11-forwarding'])
+        self.assertEqual(grants_lib.target_key_options('203.0.113.9', True)[-1],
+                         'from="203.0.113.9"')
 
-    def test_remove_matches_on_key_material(self):
-        same_key_other_comment = ('ssh-ed25519 ' + ED25519.split()[1]
-                                  + ' edited-by-admin')
-        out = grants_lib.authorized_keys_remove(ED25519 + '\n',
-                                                same_key_other_comment)
-        self.assertEqual(out, '')
-
-    def test_remove_absent_is_noop(self):
-        content = self.OTHER + '\n'
-        self.assertEqual(grants_lib.authorized_keys_remove(content, ED25519),
-                         content)
-
-    def test_remove_from_empty(self):
-        self.assertEqual(grants_lib.authorized_keys_remove('', ED25519), '')
-
-    def test_add_then_remove_round_trip(self):
-        content = self.OTHER + '\n'
-        added = grants_lib.authorized_keys_add(content, ED25519)
-        removed = grants_lib.authorized_keys_remove(added, ED25519)
-        self.assertEqual(removed, content)
+    def test_jump_options_limit_forwarding_to_targets(self):
+        opts = grants_lib.jump_key_options(['10.0.0.5', '2001:db8::1'])
+        self.assertIn('no-pty', opts)
+        self.assertIn('permitopen="10.0.0.5:22"', opts)
+        self.assertIn('permitopen="[2001:db8::1]:22"', opts)
+        with self.assertRaises(ValueError):
+            grants_lib.jump_key_options(['evil",command="sh'])
 
 
 if __name__ == '__main__':
