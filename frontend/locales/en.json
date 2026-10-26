@@ -8,7 +8,162 @@
             "noReachableHostForThisItem": "No reachable host for this item yet, so Faro connect is unavailable.",
             "openInFaro": "Open in Faro",
             "opensFaroSConnectionEditorPrefilled": "Opens Faro's connection editor prefilled for",
-            "resolvingConnectionDetails": "Resolving connection details…"
+            "resolvingConnectionDetails": "Resolving connection details…",
+            "shareAccess": "Share access…"
+        },
+        "revoke": {
+            "title": "Revoke \"{{name}}\"?",
+            "message": "The link stops working and the key is removed from every server it was installed on. Faro connections using it start failing right away.",
+            "confirm": "Revoke access",
+            "partial": "Revoked, but the key could not be removed from {{count}} server(s) yet. It will keep retrying.",
+            "success": "Access revoked"
+        },
+        "table": {
+            "name": "Name",
+            "servers": "Servers",
+            "serversMore": "{{shown}} +{{count}} more",
+            "login": "Login",
+            "bridge": "Bridge",
+            "status": "Status",
+            "expires": "Ends",
+            "created": "Created",
+            "revoke": "Revoke"
+        },
+        "page": {
+            "title": "Access",
+            "subtitle": "Give someone time-boxed SSH and SFTP access to your servers with one Faro link. No passwords change hands, and revoking removes the key.",
+            "refresh": "Refresh",
+            "new": "New access",
+            "summary": "{{live}} live · {{waiting}} waiting to be accepted",
+            "attention": "{{count}} need attention",
+            "loading": "Loading access…"
+        },
+        "empty": {
+            "title": "No one has access yet",
+            "message": "Create a link for a teammate or contractor. They open it in Faro, accept, and get SFTP and terminal access to the servers you picked until it ends or you revoke it."
+        },
+        "create": {
+            "noAddress": "No address yet",
+            "offline": "Agent offline",
+            "noSshKeys": "Agent can't manage SSH keys",
+            "failed": "Could not create the access link",
+            "errRequired": "Required",
+            "errTooMany": "A grant covers at most 64 servers",
+            "errUsername": "Lowercase letters, digits, \"_\" or \"-\", up to 32 characters",
+            "errPath": "Use an absolute path, like /var/www",
+            "errBridgeIsTarget": "The bridge cannot also be one of the granted servers",
+            "title": "New access",
+            "name": "Name",
+            "namePlaceholder": "Ana, contractor for Client X",
+            "nameHint": "Who this is for. Faro shows it on the consent screen and uses it as the connection group.",
+            "servers": "Servers",
+            "loadingServers": "Loading servers…",
+            "noServers": "No managed servers yet. Connect a server with the ServerKit agent first.",
+            "isBridge": "Bridge",
+            "duration": "Access lasts",
+            "durationHint": "The link and the key both stop working then. On OpenSSH 8.2 or newer, sshd also refuses the key at that time even if the panel is unreachable.",
+            "login": "SSH login",
+            "path": "Start folder (optional)",
+            "createUser": "Create this user on servers where it doesn't exist",
+            "rootHint": "root gives full control of every granted server. A dedicated user is safer when the person only needs their site.",
+            "bridge": "Bridge (optional)",
+            "noBridge": "None, connect directly",
+            "bridgeHint": "Faro connects through this server first. It gets the same key, limited to reaching the granted servers on port 22, so every person arrives from one static address.",
+            "bridgeLogin": "Bridge login",
+            "restrictSource": "Only accept the key from the bridge",
+            "restrictSourceHint": "Adds from=\"bridge address\" on the granted servers. Leave off if the bridge reaches them over a private network address the panel doesn't know.",
+            "creating": "Creating…",
+            "submit": "Create link",
+            "cancel": "Cancel"
+        },
+        "retry": {
+            "success": "Done. Every server is up to date.",
+            "partial": "{{count}} server(s) still failing. See the errors below."
+        },
+        "extend": {
+            "success": "Access extended",
+            "partial": "Extended, but {{count}} server(s) kept the old key expiry. Retry from this page.",
+            "title": "Extend \"{{name}}\"",
+            "intro": "Access will end this long from now:",
+            "saving": "Extending…",
+            "submit": "Extend access"
+        },
+        "delete": {
+            "title": "Delete \"{{name}}\"?",
+            "message": "Removes this record from the list. The key is already gone from every server. The audit log keeps its history.",
+            "confirm": "Delete record",
+            "success": "Record deleted"
+        },
+        "detail": {
+            "back": "All access",
+            "notFound": "This access grant does not exist anymore.",
+            "server": "Server",
+            "role": "Role",
+            "roleBridge": "Bridge",
+            "roleTarget": "Granted",
+            "host": "Address",
+            "key": "Key",
+            "sshdExpiry": "sshd expiry",
+            "yes": "Yes",
+            "noOldSsh": "No (OpenSSH < 8.2)",
+            "lastError": "Last error",
+            "updated": "Updated",
+            "retryRemoval": "Retry key removal",
+            "retryInstall": "Retry failed servers",
+            "extend": "Extend",
+            "delete": "Delete record",
+            "partialTitle": "Some servers did not get the key",
+            "partialBody": "The person can reach the servers marked Installed. Fix the error shown for the others (often an offline agent), then retry.",
+            "cleanupTitle": "The key is still on some servers",
+            "cleanupBody": "Access is revoked in the panel, but these servers could not be reached to remove the key. ServerKit retries every 5 minutes for a day; you can retry now.",
+            "waitingTitle": "Waiting for the person to accept",
+            "waitingBody": "The link was shown once when you created it. If it was lost, revoke this and create a new one.",
+            "login": "SSH login",
+            "createdIfMissing": "created if missing",
+            "path": "Start folder",
+            "bridge": "Bridge",
+            "sourceLocked": "key only accepted from the bridge",
+            "direct": "None, direct connection",
+            "ends": "Ends",
+            "ended": "Ended",
+            "created": "Created",
+            "accepted": "Accepted",
+            "fingerprint": "Key fingerprint",
+            "serversTitle": "Where the key is"
+        },
+        "status": {
+            "active": "Waiting",
+            "redeeming": "Installing key",
+            "redeemed": "Live",
+            "revoked": "Revoked",
+            "expired": "Expired",
+            "partial": "Live, some servers failed",
+            "cleanup": "Key still on a server"
+        },
+        "key": {
+            "pending": "Not installed",
+            "installed": "Installed",
+            "failed": "Install failed",
+            "removed": "Removed",
+            "removeFailed": "Removal failed"
+        },
+        "link": {
+            "copied": "Link copied",
+            "copyFailed": "Copy failed. Select the link and copy it manually.",
+            "title": "Share this link",
+            "intro": "Send this link to the person you are giving access to. They open it with Faro, review the servers, and click Accept.",
+            "onceTitle": "This link is shown once",
+            "onceBody": "Treat it like a password until it is redeemed: whoever opens it first gets the access. It works once and expires {{when}}.",
+            "copiedButton": "Copied",
+            "copy": "Copy link",
+            "done": "Done"
+        },
+        "ttl": {
+            "4h": "4 hours",
+            "24h": "1 day",
+            "3d": "3 days",
+            "7d": "7 days",
+            "30d": "30 days"
         }
     }
 }

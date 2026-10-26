@@ -1,5 +1,5 @@
 import { buildFaroConnect } from '../lib/faroLink.js';
-import { useTranslation } from 'serverkit-sdk';
+import { useAuth, useNavigate, useTranslation } from 'serverkit-sdk';
 
 // A small magnet glyph so the button reads as "Open in Faro" without pulling in
 // an icon dependency (the panel externalizes React only).
@@ -28,6 +28,8 @@ function MagnetIcon() {
  */
 export default function FaroConnectButton({ target, loading, error }) {
     const { t } = useTranslation();
+    const { isAdmin } = useAuth() || {};
+    const navigate = useNavigate();
     const url = target ? buildFaroConnect(target) : null;
 
     return (
@@ -53,10 +55,21 @@ export default function FaroConnectButton({ target, loading, error }) {
 
             {!loading && !error && url && (
                 <>
-                    <a className="skfaro-btn" href={url}>
-                        <MagnetIcon />
-                        {t('faro.faroConnectButton.openInFaro', 'Open in Faro')}
-                    </a>
+                    <div className="skfaro__buttons">
+                        <a className="skfaro-btn" href={url}>
+                            <MagnetIcon />
+                            {t('faro.faroConnectButton.openInFaro', 'Open in Faro')}
+                        </a>
+                        {isAdmin && target.serverId && (
+                            <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => navigate(`/faro?share=${encodeURIComponent(target.serverId)}`)}
+                            >
+                                {t('faro.faroConnectButton.shareAccess', 'Share access…')}
+                            </button>
+                        )}
+                    </div>
                     <p className="skfaro__hint">
                         {t('faro.faroConnectButton.opensFaroSConnectionEditorPrefilled', "Opens Faro's connection editor prefilled for")}
                         {' '}<code>{target.host}</code>

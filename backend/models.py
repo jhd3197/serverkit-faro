@@ -211,7 +211,9 @@ def grant_health(grant, targets):
 
 
 def _iso(value):
-    return value.isoformat() if value else None
+    """Naive-UTC datetime -> RFC 3339 with Z, so browsers don't read it as
+    local time."""
+    return value.isoformat() + 'Z' if value else None
 
 
 #: Columns added to an existing grants table by later releases:

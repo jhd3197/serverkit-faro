@@ -40,6 +40,9 @@ export async function targetFromApp(app, { name } = {}) {
         host,
         path: app.root_path || undefined,
         name: name || app.name || undefined,
+        // Not part of the faro:// link — lets the panel offer "Share access"
+        // for the server this app runs on.
+        serverId: app.server_id || undefined,
     };
 }
 

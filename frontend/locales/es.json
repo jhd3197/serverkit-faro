@@ -8,7 +8,162 @@
             "noReachableHostForThisItem": "Todavía no hay un host accesible para este elemento: la conexión con Faro no está disponible.",
             "openInFaro": "Abrir en Faro",
             "opensFaroSConnectionEditorPrefilled": "Abre el editor de conexiones de Faro precargado para",
-            "resolvingConnectionDetails": "Resolviendo los datos de conexión…"
+            "resolvingConnectionDetails": "Resolviendo los datos de conexión…",
+            "shareAccess": "Compartir acceso…"
+        },
+        "revoke": {
+            "title": "¿Revocar «{{name}}»?",
+            "message": "El enlace deja de funcionar y la clave se elimina de todos los servidores donde se instaló. Las conexiones de Faro que la usan fallan de inmediato.",
+            "confirm": "Revocar acceso",
+            "partial": "Revocado, pero aún no se pudo eliminar la clave de {{count}} servidor(es). Se seguirá reintentando.",
+            "success": "Acceso revocado"
+        },
+        "table": {
+            "name": "Nombre",
+            "servers": "Servidores",
+            "serversMore": "{{shown}} y {{count}} más",
+            "login": "Usuario",
+            "bridge": "Puente",
+            "status": "Estado",
+            "expires": "Termina",
+            "created": "Creado",
+            "revoke": "Revocar"
+        },
+        "page": {
+            "title": "Acceso",
+            "subtitle": "Da a alguien acceso SSH y SFTP temporal a tus servidores con un solo enlace de Faro. No se comparten contraseñas y al revocarlo se elimina la clave.",
+            "refresh": "Actualizar",
+            "new": "Nuevo acceso",
+            "summary": "{{live}} activos · {{waiting}} esperando aceptación",
+            "attention": "{{count}} requieren atención",
+            "loading": "Cargando accesos…"
+        },
+        "empty": {
+            "title": "Nadie tiene acceso todavía",
+            "message": "Crea un enlace para un compañero o contratista. Lo abre en Faro, lo acepta y obtiene acceso SFTP y de terminal a los servidores que elegiste hasta que termine o lo revoques."
+        },
+        "create": {
+            "noAddress": "Sin dirección todavía",
+            "offline": "Agente desconectado",
+            "noSshKeys": "El agente no puede gestionar claves SSH",
+            "failed": "No se pudo crear el enlace de acceso",
+            "errRequired": "Obligatorio",
+            "errTooMany": "Un acceso cubre como máximo 64 servidores",
+            "errUsername": "Letras minúsculas, dígitos, «_» o «-», hasta 32 caracteres",
+            "errPath": "Usa una ruta absoluta, como /var/www",
+            "errBridgeIsTarget": "El puente no puede ser también uno de los servidores con acceso",
+            "title": "Nuevo acceso",
+            "name": "Nombre",
+            "namePlaceholder": "Ana, contratista de Cliente X",
+            "nameHint": "Para quién es. Faro lo muestra en la pantalla de consentimiento y lo usa como grupo de conexiones.",
+            "servers": "Servidores",
+            "loadingServers": "Cargando servidores…",
+            "noServers": "Todavía no hay servidores gestionados. Conecta primero un servidor con el agente de ServerKit.",
+            "isBridge": "Puente",
+            "duration": "El acceso dura",
+            "durationHint": "El enlace y la clave dejan de funcionar entonces. Con OpenSSH 8.2 o posterior, sshd también rechaza la clave a esa hora aunque el panel no esté disponible.",
+            "login": "Usuario SSH",
+            "path": "Carpeta inicial (opcional)",
+            "createUser": "Crear este usuario en los servidores donde no exista",
+            "rootHint": "root da control total de cada servidor con acceso. Un usuario dedicado es más seguro si la persona solo necesita su sitio.",
+            "bridge": "Puente (opcional)",
+            "noBridge": "Ninguno, conexión directa",
+            "bridgeHint": "Faro se conecta primero a través de este servidor. Recibe la misma clave, limitada a llegar a los servidores con acceso por el puerto 22, para que todos lleguen desde una misma dirección fija.",
+            "bridgeLogin": "Usuario del puente",
+            "restrictSource": "Aceptar la clave solo desde el puente",
+            "restrictSourceHint": "Añade from=\"dirección del puente\" en los servidores con acceso. Déjalo desactivado si el puente llega a ellos por una dirección de red privada que el panel no conoce.",
+            "creating": "Creando…",
+            "submit": "Crear enlace",
+            "cancel": "Cancelar"
+        },
+        "retry": {
+            "success": "Listo. Todos los servidores están al día.",
+            "partial": "{{count}} servidor(es) siguen fallando. Revisa los errores abajo."
+        },
+        "extend": {
+            "success": "Acceso ampliado",
+            "partial": "Ampliado, pero {{count}} servidor(es) conservan la caducidad anterior de la clave. Reintenta desde esta página.",
+            "title": "Ampliar «{{name}}»",
+            "intro": "El acceso terminará dentro de:",
+            "saving": "Ampliando…",
+            "submit": "Ampliar acceso"
+        },
+        "delete": {
+            "title": "¿Eliminar «{{name}}»?",
+            "message": "Quita este registro de la lista. La clave ya no está en ningún servidor. El registro de auditoría conserva su historial.",
+            "confirm": "Eliminar registro",
+            "success": "Registro eliminado"
+        },
+        "detail": {
+            "back": "Todos los accesos",
+            "notFound": "Este acceso ya no existe.",
+            "server": "Servidor",
+            "role": "Rol",
+            "roleBridge": "Puente",
+            "roleTarget": "Con acceso",
+            "host": "Dirección",
+            "key": "Clave",
+            "sshdExpiry": "Caducidad en sshd",
+            "yes": "Sí",
+            "noOldSsh": "No (OpenSSH < 8.2)",
+            "lastError": "Último error",
+            "updated": "Actualizado",
+            "retryRemoval": "Reintentar eliminación de la clave",
+            "retryInstall": "Reintentar servidores fallidos",
+            "extend": "Ampliar",
+            "delete": "Eliminar registro",
+            "partialTitle": "Algunos servidores no recibieron la clave",
+            "partialBody": "La persona puede entrar a los servidores marcados como Instalada. Corrige el error de los demás (a menudo un agente desconectado) y reintenta.",
+            "cleanupTitle": "La clave sigue en algunos servidores",
+            "cleanupBody": "El acceso está revocado en el panel, pero no se pudo contactar con estos servidores para eliminar la clave. ServerKit reintenta cada 5 minutos durante un día; puedes reintentar ahora.",
+            "waitingTitle": "Esperando a que la persona acepte",
+            "waitingBody": "El enlace se mostró una sola vez al crearlo. Si se perdió, revoca este acceso y crea uno nuevo.",
+            "login": "Usuario SSH",
+            "createdIfMissing": "se crea si no existe",
+            "path": "Carpeta inicial",
+            "bridge": "Puente",
+            "sourceLocked": "clave aceptada solo desde el puente",
+            "direct": "Ninguno, conexión directa",
+            "ends": "Termina",
+            "ended": "Terminó",
+            "created": "Creado",
+            "accepted": "Aceptado",
+            "fingerprint": "Huella de la clave",
+            "serversTitle": "Dónde está la clave"
+        },
+        "status": {
+            "active": "Esperando",
+            "redeeming": "Instalando clave",
+            "redeemed": "Activo",
+            "revoked": "Revocado",
+            "expired": "Caducado",
+            "partial": "Activo, algunos servidores fallaron",
+            "cleanup": "La clave sigue en un servidor"
+        },
+        "key": {
+            "pending": "Sin instalar",
+            "installed": "Instalada",
+            "failed": "Falló la instalación",
+            "removed": "Eliminada",
+            "removeFailed": "Falló la eliminación"
+        },
+        "link": {
+            "copied": "Enlace copiado",
+            "copyFailed": "No se pudo copiar. Selecciona el enlace y cópialo manualmente.",
+            "title": "Comparte este enlace",
+            "intro": "Envía este enlace a la persona a la que das acceso. Lo abre con Faro, revisa los servidores y pulsa Aceptar.",
+            "onceTitle": "Este enlace se muestra una sola vez",
+            "onceBody": "Trátalo como una contraseña hasta que se use: quien lo abra primero obtiene el acceso. Funciona una vez y caduca el {{when}}.",
+            "copiedButton": "Copiado",
+            "copy": "Copiar enlace",
+            "done": "Listo"
+        },
+        "ttl": {
+            "4h": "4 horas",
+            "24h": "1 día",
+            "3d": "3 días",
+            "7d": "7 días",
+            "30d": "30 días"
         }
     }
 }

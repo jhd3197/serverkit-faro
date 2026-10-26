@@ -75,3 +75,249 @@
     color: var(--text-code, var(--text, #e6e6ef));
     font-size: 11px;
 }
+
+.skfaro__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ---- Access pages (/faro, /faro/grants/:id) — layout only; buttons,
+ * cards, pills, tables and modal chrome come from the panel's design system. */
+
+.skfaro-page__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.skfaro-page__title {
+    margin: 0;
+}
+
+.skfaro-page__header .skfaro-muted {
+    margin: 0.25rem 0 0;
+    max-width: 60ch;
+}
+
+.skfaro-muted {
+    color: var(--text-dim, #9a9aa8);
+}
+
+.skfaro-summary {
+    margin: 0 0 1rem;
+    font-size: 0.875rem;
+    color: var(--text-dim, #9a9aa8);
+}
+
+.skfaro-summary__warn {
+    color: var(--warning-color, #f59e0b);
+}
+
+.skfaro-back {
+    display: inline-block;
+    margin-bottom: 0.75rem;
+    color: var(--text-dim, #9a9aa8);
+    text-decoration: none;
+}
+
+.skfaro-back:hover {
+    color: var(--text, #e6e6ef);
+}
+
+.skfaro-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.skfaro-empty .skfaro-muted {
+    max-width: 52ch;
+    margin: 0.5rem auto 1.25rem;
+}
+
+.skfaro-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.skfaro-actions--tight {
+    margin-top: 0;
+}
+
+.skfaro-table__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.35rem;
+}
+
+.skfaro-section-title {
+    margin: 1.5rem 0 0.75rem;
+    font-size: 1rem;
+}
+
+.skfaro-notice {
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border, #2a2a35);
+    border-radius: var(--radius-sm, 8px);
+    background: var(--bg-hover, rgba(127, 127, 127, 0.08));
+}
+
+.skfaro-notice--warn {
+    border-color: var(--warning-color, #f59e0b);
+}
+
+.skfaro-notice p {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+}
+
+/* detail page */
+.skfaro-detail__heading {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.skfaro-detail {
+    padding: 1.25rem;
+}
+
+.skfaro-detail__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem 1.5rem;
+    margin: 0;
+}
+
+.skfaro-detail__item dt {
+    font-size: 0.8rem;
+    color: var(--text-dim, #9a9aa8);
+    margin-bottom: 0.2rem;
+}
+
+.skfaro-detail__item dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+/* create form */
+.skfaro-form__row {
+    margin-bottom: 0.9rem;
+}
+
+.skfaro-form__row--section {
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--border, #2a2a35);
+}
+
+.skfaro-form__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0 1rem;
+    align-items: start;
+}
+
+.skfaro-form__hint {
+    margin: 0.25rem 0 0;
+    font-size: 0.8rem;
+    color: var(--text-dim, #9a9aa8);
+}
+
+.skfaro-form__hint--block {
+    display: block;
+}
+
+.skfaro-form__error {
+    margin: 0.25rem 0 0;
+    font-size: 0.8rem;
+    color: var(--danger-color, #ef4444);
+}
+
+.skfaro-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0.9rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.skfaro-check input {
+    margin-top: 0.2rem;
+}
+
+.skfaro-check--inline {
+    margin-top: 1.6rem;
+}
+
+.skfaro-seg {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.skfaro-serverlist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid var(--border, #2a2a35);
+    border-radius: var(--radius-sm, 8px);
+}
+
+.skfaro-serverlist li + li {
+    border-top: 1px solid var(--border, #2a2a35);
+}
+
+.skfaro-serverlist label {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+}
+
+.skfaro-serverlist li.is-disabled label {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.skfaro-serverlist__name {
+    font-weight: 500;
+}
+
+.skfaro-serverlist__host {
+    font-size: 0.8rem;
+    color: var(--text-dim, #9a9aa8);
+}
+
+.skfaro-serverlist__why {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--text-dim, #9a9aa8);
+}
+
+.skfaro-link {
+    width: 100%;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.8rem;
+    resize: none;
+    margin: 0.5rem 0 1rem;
+}
+
+@media (max-width: 640px) {
+    .skfaro-page__header {
+        flex-direction: column;
+    }
+
+    .skfaro-check--inline {
+        margin-top: 0;
+    }
+}
