@@ -1,4 +1,5 @@
 import { buildFaroConnect } from '../lib/faroLink.js';
+import { useAuth, useNavigate, useTranslation } from 'serverkit-sdk';
 
 // A small magnet glyph so the button reads as "Open in Faro" without pulling in
 // an icon dependency (the panel externalizes React only).
@@ -26,40 +27,54 @@ function MagnetIcon() {
  * @param {Error|null} props.error
  */
 export default function FaroConnectButton({ target, loading, error }) {
+    const { t } = useTranslation();
+    const { isAdmin } = useAuth() || {};
+    const navigate = useNavigate();
     const url = target ? buildFaroConnect(target) : null;
 
     return (
         <section className="skfaro">
             <div className="skfaro__head">
                 <MagnetIcon />
-                <span className="skfaro__title">Faro</span>
+                <span className="skfaro__title">{t('faro.faroConnectButton.faro', 'Faro')}</span>
             </div>
 
-            {loading && <p className="skfaro__note">Resolving connection details…</p>}
+            {loading && <p className="skfaro__note">{t('faro.faroConnectButton.resolvingConnectionDetails', 'Resolving connection details…')}</p>}
 
             {!loading && error && (
                 <p className="skfaro__note skfaro__note--muted">
-                    Couldn’t load connection details for this item.
+                    {t('faro.faroConnectButton.couldnTLoadConnectionDetailsFor', "Couldn't load connection details for this item.")}
                 </p>
             )}
 
             {!loading && !error && !url && (
                 <p className="skfaro__note skfaro__note--muted">
-                    No reachable host for this item yet — Faro connect is unavailable.
+                    {t('faro.faroConnectButton.noReachableHostForThisItem', 'No reachable host for this item yet, so Faro connect is unavailable.')}
                 </p>
             )}
 
             {!loading && !error && url && (
                 <>
-                    <a className="skfaro-btn" href={url}>
-                        <MagnetIcon />
-                        Open in Faro
-                    </a>
+                    <div className="skfaro__buttons">
+                        <a className="skfaro-btn" href={url}>
+                            <MagnetIcon />
+                            {t('faro.faroConnectButton.openInFaro', 'Open in Faro')}
+                        </a>
+                        {isAdmin && target.serverId && (
+                            <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => navigate(`/faro?share=${encodeURIComponent(target.serverId)}`)}
+                            >
+                                {t('faro.faroConnectButton.shareAccess', 'Share access…')}
+                            </button>
+                        )}
+                    </div>
                     <p className="skfaro__hint">
-                        Opens Faro’s connection editor prefilled for
+                        {t('faro.faroConnectButton.opensFaroSConnectionEditorPrefilled', "Opens Faro's connection editor prefilled for")}
                         {' '}<code>{target.host}</code>
-                        {target.path ? <> at <code>{target.path}</code></> : null}.
-                        {' '}No password is sent — you review and connect in Faro.
+                        {target.path ? <> {t('faro.faroConnectButton.at', 'at')} <code>{target.path}</code></> : null}.
+                        {' '}{t('faro.faroConnectButton.noPasswordIsSentYouReview', 'No password is sent. You review and connect in Faro.')}
                     </p>
                 </>
             )}

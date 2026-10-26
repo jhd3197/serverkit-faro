@@ -34,19 +34,166 @@ A `faro://` link is treated as untrusted input by Faro and by this extension:
 See [`Faro/docs/deep-links.md`](https://github.com/jhd3197/faro/blob/main/docs/deep-links.md)
 for the full `faro://` contract.
 
+## Access grants
+
+The extension is also a **Faro Grant Protocol v1 issuer**: give someone
+time-boxed SSH/SFTP access to **one or many managed servers with a single
+link**. Access is key-based, single-use and revocable, with an optional
+**bridge** (a managed jump server) so every person connects from the same
+static address. No password and none of the owner's keys ever change hands:
+Faro generates a fresh ed25519 keypair on the *person's* machine after they
+click Accept and uploads only the public key. The extension installs that key
+for the grant's login on each granted server (and the bridge) through the
+ServerKit agent. Revoking or expiring the grant removes exactly that line.
+
+### In the panel
+
+- **Access** page (`/faro`, in the sidebar): every grant with its status
+  (Waiting → Live → Revoked/Expired), servers, login, bridge and end time.
+  **New access** picks the servers, duration (4h to 30 days), SSH login, start
+  folder and bridge, then shows the `faro://grant` link **once** to copy.
+- **Grant page** (`/faro/grants/:id`): where the key actually is, per server
+  (Installed / Install failed / Removal failed, with the agent's error),
+  whether sshd itself enforces the expiry, who accepted and from which IP, and
+  the key fingerprint. Actions: **Retry**, **Extend**, **Revoke**, and
+  **Delete record** once no key is left anywhere.
+- **Share access…** on the Faro panel of a service, domain or WordPress site
+  opens the form with that site's server already picked (admins only).
+
+### Members and devices
+
+A one-time link is one key for one device. For people who need access again,
+or from more than one machine, add them as a **member** (Access → Members):
+
+1. **Give access** issues grants to the member. No link is created; the
+   access applies to each of the member's approved devices.
+2. **Add device** creates a single-use add-device link. The member opens it in
+   Faro on that machine; Faro generates a key there and uploads the public half.
+3. With **Require my approval** (the default) the device waits on the member
+   page with its fingerprint and source IP until you approve or reject it, so
+   a leaked link only produces a request. Approved, its key goes on every
+   server the member's live grants cover.
+4. **Revoke** a single device (a lost laptop) without touching the others, or
+   **Revoke everything** when someone leaves.
+
+Keys are tracked per device, server and login, and reconciled per member.
+When two of a member's grants want the same line (the same server and login,
+or a shared bridge), they merge into one: the widest options, the union of the
+bridge's `permitopen`, and the latest expiry. Ending one grant never removes a
+key another still needs. Member keys are tagged `faro-device:<id>`.
+
+### What gets installed
+
+Each key line is tagged `faro-grant:<id>` and restricted:
+
+| Where | Options |
+|---|---|
+| Granted servers | `no-agent-forwarding,no-X11-forwarding`, plus `from="<bridge>"` when "only accept the key from the bridge" is on |
+| Bridge | `no-pty,no-agent-forwarding,no-X11-forwarding,permitopen="<server>:22"` for each granted server |
+| Both, on OpenSSH ≥ 8.2 | `expiry-time="…"`, so sshd refuses the key at the end time even if the panel never gets to remove it |
+
+Redemption claims the token atomically. If the bridge or every granted server
+fails, the keys that did land are removed and the link stays usable. If only
+some servers fail, access goes live on the others and the grant page offers a
+retry. Removals that fail (an offline agent, say) stay visible as "Key still on
+a server" and are retried every 5 minutes for a day.
+
+### API
+
+The two public protocol endpoints (unauthenticated: the link's redemption
+token is the auth; per-IP rate-limited):
+
+```
+GET  {panel}/api/v1/faro-grants/.well-known/faro-grant/{token}      → grant manifest
+POST {panel}/api/v1/faro-grants/.well-known/faro-grant/{token}/key  → install {public_key}
+```
+
+Admin routes (admin JWT or `X-API-Key`):
+
+| Route | |
+|---|---|
+| `GET /servers` | managed servers with `online` and `ssh_keys` (can the agent manage keys) |
+| `POST /grants` | issue; returns `{grant, link}` |
+| `GET /grants`, `GET /grants/<id>` | grants with per-server `targets` and a `health` flag (`ok` / `partial` / `cleanup`) |
+| `POST /grants/<id>/extend` | `{ttl_hours}` from now; re-installs live keys with the new expiry |
+| `POST /grants/<id>/retry` | retry failed installs (live grant) or failed removals (ended grant) |
+| `POST /grants/<id>/revoke` | revoke and remove the key; calling it again retries removal |
+| `DELETE /grants/<id>` | delete an ended grant once no key is left |
+| `GET/POST /members`, `GET/PATCH/DELETE /members/<id>` | members; `GET` includes devices, grants, invites and key lines |
+| `POST /members/<id>/invites` | `{ttl_hours, require_approval}`; returns `{invite, link}` once |
+| `POST /members/<id>/revoke-all`, `POST /members/<id>/sync` | cut a member off / retry failing key lines |
+| `POST /devices/<id>/approve`, `/reject`, `/revoke`; `PATCH /devices/<id>` | device lifecycle and `{label}` rename |
+| `POST /invites/<id>/revoke` | kill an unused add-device link |
+
+```bash
+curl -X POST https://panel.example.com/api/v1/faro-grants/grants \
+  -H "Authorization: Bearer <admin-jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "name": "Client X — 2 servers",
+        "server_ids": ["<server-uuid>", "<server-uuid>"],
+        "ttl_hours": 72,
+        "ssh_username": "deploy",
+        "create_user": true,
+        "path": "/var/www",
+        "jump": {"server_id": "<bridge-server-uuid>", "username": "faro-grant"},
+        "restrict_source": true
+      }'
+# → {"grant": {...}, "link": "faro://grant?issuer=…&token=…&name=…"}
+```
+
+`ttl_hours` defaults to 72 and is capped at 720. `jump`, `path`,
+`ssh_username` (default `root`), `create_user`, `restrict_source` and
+`member_id` are optional. With `member_id` the reply's `link` is `null`. The bridge must be a managed server, so its key can be installed and
+removed with the grant.
+
+**Limits:**
+
+- One login per grant (every server in the bundle uses it). With
+  `create_user`, a missing user is created with `useradd -m`.
+- The link contains the redemption token. Treat it like a password until it's
+  redeemed. Tokens are stored only as sha256, are single-use, and die at expiry.
+- Keys go in the login's `~/.ssh/authorized_keys`. Servers using an
+  `AuthorizedKeysFile` override or centralized key management need manual
+  handling.
+
+Full protocol spec:
+[`Faro/docs/grant-links.md`](https://github.com/jhd3197/Faro/blob/main/docs/grant-links.md).
+
 ## Requirements
 
-- **ServerKit panel** ≥ 1.7.0 (runtime-ESM extension loader). Full WordPress
-  support needs a panel build that ships the `wordpress.detail.panel` slot.
-- **Faro** desktop app installed on the machine viewing the panel, with the
+- **ServerKit panel** ≥ 1.11.17 (SDK 1.5: extension pages, walkthroughs).
+  Full WordPress support needs a panel build that ships the
+  `wordpress.detail.panel` slot.
+- **Faro** desktop app installed on the machine opening the links, with the
   `faro://` scheme registered (Faro's installer does this; dev builds register
   it at startup).
+- **For access grants**, on every granted server and bridge:
+  - a ServerKit agent new enough to report the `ssh.keys` capability, running
+    as root or with passwordless sudo, on Linux;
+  - agent permissions that allow `ssh:keys:*`: the default (Full Access), or
+    the **SSH Access** profile (`permission_profile: "ssh_access"`) on a
+    locked-down server.
 
-## Pure-frontend
+  The form greys out servers that don't qualify and says why.
 
-No backend, no database, no server permissions — the extension only generates
-links in the browser from data the panel already exposes (`/apps/:id`,
-`/servers/:id`, `/wordpress/sites/:id`).
+## Frontend + optional backend
+
+The deep-link feature is pure frontend: it only generates links in the browser
+from data the panel already exposes (`/apps/:id`, `/servers/:id`,
+`/wordpress/sites/:id`). The access-grant feature adds a small Flask backend
+(`backend/`, hot-loaded as `app.plugins.serverkit-faro`): the
+`ext_serverkit_faro_grants` and `ext_serverkit_faro_grant_targets` tables, the
+endpoints above, and a 5-minute sweeper job that expires grants, removes their
+keys and retries failed removals. The Access pages are in the same frontend
+bundle.
+
+```bash
+python -m unittest discover -s backend/tests -v   # protocol helpers, stdlib only
+# grant lifecycle against a real panel + fake agents (needs ../ServerKit/backend
+# or SERVERKIT_BACKEND, run with the panel's Python environment):
+python -m unittest discover -s tests -v
+```
 
 ## Build (local)
 
