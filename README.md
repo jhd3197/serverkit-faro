@@ -144,8 +144,9 @@ Full protocol spec:
 - **For access grants**, on every granted server and bridge:
   - a ServerKit agent new enough to report the `ssh.keys` capability, running
     as root or with passwordless sudo, on Linux;
-  - agent permissions that allow `ssh:keys:*` (the **Full Access** profile, or
-    add `ssh:*` to the server's permissions).
+  - agent permissions that allow `ssh:keys:*`: the default (Full Access), or
+    the **SSH Access** profile (`permission_profile: "ssh_access"`) on a
+    locked-down server.
 
   The form greys out servers that don't qualify and says why.
 

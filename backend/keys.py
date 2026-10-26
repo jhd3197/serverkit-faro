@@ -36,7 +36,7 @@ def describe_error(err):
     code = getattr(err, 'code', None)
     if code == 'PERMISSION_DENIED':
         return ("This server's agent permissions don't allow ssh:keys. Give "
-                "the server Full Access, or add 'ssh:*' to its permissions.")
+                "the server the SSH Access or Full Access permission profile.")
     if code == 'UNSUPPORTED':
         return ('The agent on this server is too old for SSH key management. '
                 'Update the agent.')

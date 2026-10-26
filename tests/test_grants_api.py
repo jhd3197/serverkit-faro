@@ -247,7 +247,7 @@ class GrantApiTests(unittest.TestCase):
         self.fleet.fail[self.web1.id] = "PERMISSION_DENIED"
         resp = self.redeem(token)
         self.assertEqual(resp.status_code, 502)
-        self.assertIn("Full Access", resp.get_json()["failed"][0]["error"])
+        self.assertIn("SSH Access", resp.get_json()["failed"][0]["error"])
 
     # ---- revoke / cleanup ----
     def test_revoke_failure_stays_visible_and_sweeper_retries(self):
