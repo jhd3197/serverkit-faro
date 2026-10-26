@@ -11,6 +11,8 @@ import DomainFaroPanel from './components/DomainFaroPanel.jsx';
 import WordPressFaroPanel from './components/WordPressFaroPanel.jsx';
 import AccessPage from './components/AccessPage.jsx';
 import GrantDetailPage from './components/GrantDetailPage.jsx';
+import MembersPage from './components/MembersPage.jsx';
+import MemberDetailPage from './components/MemberDetailPage.jsx';
 
 // Translations. Registered against the PANEL's i18next singleton (shared via
 // its vendor import map), additively and under this extension's own
@@ -41,4 +43,5 @@ if (typeof document !== 'undefined' && !document.getElementById('serverkit-faro-
 export {
     ServiceFaroPanel, DomainFaroPanel, WordPressFaroPanel,
     AccessPage as FaroAccessPage, GrantDetailPage as FaroGrantPage,
+    MembersPage as FaroMembersPage, MemberDetailPage as FaroMemberPage,
 };

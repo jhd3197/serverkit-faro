@@ -22,12 +22,13 @@ function describeCreateError(err, t) {
  * "New access" form: who it's for, which servers, how long, which login, and
  * an optional bridge (a managed jump server every connection goes through).
  */
-export default function GrantCreateModal({ open, preselectServerId, onClose, onCreated }) {
+export default function GrantCreateModal({ open, preselectServerId, memberId = null, onClose, onCreated }) {
     const { t } = useTranslation();
     const toast = useToast();
     const [form, setForm] = useState(EMPTY_GRANT_FORM);
     const [errors, setErrors] = useState({});
     const [servers, setServers] = useState(null);
+    const [members, setMembers] = useState([]);
     const [loadError, setLoadError] = useState(null);
     const [saving, setSaving] = useState(false);
 
@@ -36,9 +37,13 @@ export default function GrantCreateModal({ open, preselectServerId, onClose, onC
         setErrors({});
         setForm({
             ...EMPTY_GRANT_FORM,
+            memberId: memberId ? String(memberId) : '',
             serverIds: preselectServerId ? [String(preselectServerId)] : [],
         });
         let cancelled = false;
+        faroGrantsApi.listMembers()
+            .then((data) => { if (!cancelled) setMembers(Array.isArray(data?.members) ? data.members : []); })
+            .catch(() => { if (!cancelled) setMembers([]); });
         faroGrantsApi.listServers()
             .then((data) => {
                 if (cancelled) return;
@@ -47,7 +52,7 @@ export default function GrantCreateModal({ open, preselectServerId, onClose, onC
             })
             .catch((err) => { if (!cancelled) setLoadError(err.message); });
         return () => { cancelled = true; };
-    }, [open, preselectServerId]);
+    }, [open, preselectServerId, memberId]);
 
     const set = (patch) => setForm((prev) => ({ ...prev, ...patch }));
 
@@ -66,7 +71,7 @@ export default function GrantCreateModal({ open, preselectServerId, onClose, onC
         setSaving(true);
         try {
             const result = await faroGrantsApi.createGrant(payload);
-            onCreated(result.grant, result.link);
+            onCreated(result.grant, result.link, result);
         } catch (err) {
             toast.error(describeCreateError(err, t));
         } finally {
@@ -95,6 +100,27 @@ export default function GrantCreateModal({ open, preselectServerId, onClose, onC
                 onSubmit={(event) => { event.preventDefault(); submit(); }}
             >
                 <div className="skfaro-form__row">
+                    <label className="form-label" htmlFor="skfaro-for">{t('faro.create.for', 'For')}</label>
+                    <select
+                        id="skfaro-for"
+                        className="form-select"
+                        value={form.memberId}
+                        disabled={Boolean(memberId)}
+                        onChange={(event) => set({ memberId: event.target.value })}
+                    >
+                        <option value="">{t('faro.create.forLink', 'Anyone with a one-time link')}</option>
+                        {members.map((member) => (
+                            <option key={member.id} value={String(member.id)}>{member.name}</option>
+                        ))}
+                    </select>
+                    <p className="skfaro-form__hint">
+                        {form.memberId
+                            ? t('faro.create.forMemberHint', 'Every approved device of this member gets the access. No link is created; add devices from the member page.')
+                            : t('faro.create.forLinkHint', 'Creates a single-use link for one device. For someone who will need access again, add them as a member instead.')}
+                    </p>
+                </div>
+
+                <div className="skfaro-form__row">
                     <label className="form-label" htmlFor="skfaro-name">{t('faro.create.name', 'Name')}</label>
                     <input
                         id="skfaro-name"
@@ -102,7 +128,9 @@ export default function GrantCreateModal({ open, preselectServerId, onClose, onC
                         type="text"
                         autoFocus
                         maxLength={255}
-                        placeholder={t('faro.create.namePlaceholder', 'Ana, contractor for Client X')}
+                        placeholder={form.memberId
+                            ? t('faro.create.namePlaceholderMember', 'Client X sites')
+                            : t('faro.create.namePlaceholder', 'Ana, contractor for Client X')}
                         value={form.name}
                         onChange={(event) => set({ name: event.target.value })}
                     />
@@ -263,7 +291,11 @@ export default function GrantCreateModal({ open, preselectServerId, onClose, onC
 
                 <div className="skfaro-actions">
                     <button type="submit" className="btn btn-primary" disabled={saving} data-walkthrough="faro-create-submit">
-                        {saving ? t('faro.create.creating', 'Creating…') : t('faro.create.submit', 'Create link')}
+                        {saving
+                            ? t('faro.create.creating', 'Creating…')
+                            : (form.memberId
+                                ? t('faro.create.submitMember', 'Give access')
+                                : t('faro.create.submit', 'Create link'))}
                     </button>
                     <button type="button" className="btn btn-ghost" disabled={saving} onClick={onClose}>
                         {t('faro.create.cancel', 'Cancel')}

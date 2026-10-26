@@ -53,6 +53,7 @@ export const MAX_SERVERS = 64;
 const USERNAME_RE = /^[a-z_][a-z0-9_-]{0,31}$/;
 
 export const EMPTY_GRANT_FORM = {
+    memberId: '',   // '' = a one-time link; otherwise the member's devices get it
     name: '',
     serverIds: [],
     ttlHours: DEFAULT_TTL_HOURS,
@@ -98,6 +99,7 @@ export function buildGrantPayload(form) {
         ttl_hours: Number(form.ttlHours) || DEFAULT_TTL_HOURS,
         ssh_username: sshUsername,
     };
+    if (form.memberId) payload.member_id = Number(form.memberId);
     if (path) payload.path = path;
     if (sshUsername !== 'root' && form.createUser) payload.create_user = true;
     if (bridgeId) {
@@ -106,6 +108,11 @@ export function buildGrantPayload(form) {
         if (form.restrictSource) payload.restrict_source = true;
     }
     return { errors, payload };
+}
+
+/** Pill kind for a member's device. */
+export function deviceKind(status) {
+    return { active: 'green', pending: 'amber', rejected: 'gray', revoked: 'gray' }[status] || 'gray';
 }
 
 /** Counts for the list header. */

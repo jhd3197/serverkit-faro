@@ -23,7 +23,15 @@ export function useGrantLabels() {
         remove_failed: t('faro.key.removeFailed', 'Removal failed'),
     };
 
+    const device = {
+        pending: t('faro.deviceStatus.pending', 'Waiting for approval'),
+        active: t('faro.deviceStatus.active', 'Active'),
+        rejected: t('faro.deviceStatus.rejected', 'Rejected'),
+        revoked: t('faro.deviceStatus.revoked', 'Revoked'),
+    };
+
     return {
+        device: (value) => device[value] || value || '—',
         grant: (grant) => health[grant?.health] || status[grant?.status] || grant?.status || '—',
         key: (value) => key[value] || value || '—',
     };

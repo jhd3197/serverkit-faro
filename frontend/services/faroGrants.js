@@ -28,4 +28,37 @@ export const faroGrantsApi = {
 
     deleteGrant: (id) => api.request(
         `${BASE_PATH}/grants/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+    // ---- members, devices, invites ----
+    listMembers: () => api.request(`${BASE_PATH}/members`),
+
+    // -> { member, devices, grants, invites, keys }
+    getMember: (id) => api.request(`${BASE_PATH}/members/${encodeURIComponent(id)}`),
+
+    createMember: (body) => api.request(`${BASE_PATH}/members`, { method: 'POST', body }),
+
+    updateMember: (id, body) => api.request(
+        `${BASE_PATH}/members/${encodeURIComponent(id)}`, { method: 'PATCH', body }),
+
+    deleteMember: (id) => api.request(
+        `${BASE_PATH}/members/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+    revokeMember: (id) => api.request(
+        `${BASE_PATH}/members/${encodeURIComponent(id)}/revoke-all`, { method: 'POST' }),
+
+    syncMember: (id) => api.request(
+        `${BASE_PATH}/members/${encodeURIComponent(id)}/sync`, { method: 'POST' }),
+
+    // -> { invite, link }; the link is only ever returned here, once.
+    createInvite: (memberId, body) => api.request(
+        `${BASE_PATH}/members/${encodeURIComponent(memberId)}/invites`, { method: 'POST', body }),
+
+    revokeInvite: (id) => api.request(
+        `${BASE_PATH}/invites/${encodeURIComponent(id)}/revoke`, { method: 'POST' }),
+
+    deviceAction: (id, action) => api.request(
+        `${BASE_PATH}/devices/${encodeURIComponent(id)}/${action}`, { method: 'POST' }),
+
+    renameDevice: (id, label) => api.request(
+        `${BASE_PATH}/devices/${encodeURIComponent(id)}`, { method: 'PATCH', body: { label } }),
 };

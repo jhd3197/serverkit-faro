@@ -27,7 +27,9 @@
             "status": "Estado",
             "expires": "Termina",
             "created": "Creado",
-            "revoke": "Revocar"
+            "revoke": "Revocar",
+            "for": "Para",
+            "oneTimeLink": "Enlace de un solo uso"
         },
         "page": {
             "title": "Acceso",
@@ -74,7 +76,14 @@
             "restrictSourceHint": "Añade from=\"dirección del puente\" en los servidores con acceso. Déjalo desactivado si el puente llega a ellos por una dirección de red privada que el panel no conoce.",
             "creating": "Creando…",
             "submit": "Crear enlace",
-            "cancel": "Cancelar"
+            "cancel": "Cancelar",
+            "memberSuccess": "Acceso concedido a {{name}}",
+            "for": "Para",
+            "forLink": "Cualquiera con un enlace de un solo uso",
+            "forMemberHint": "Cada dispositivo aprobado de este miembro recibe el acceso. No se crea ningún enlace; añade dispositivos desde la página del miembro.",
+            "forLinkHint": "Crea un enlace de un solo uso para un dispositivo. Si la persona necesitará acceso de nuevo, añádela como miembro.",
+            "namePlaceholderMember": "Sitios de Cliente X",
+            "submitMember": "Dar acceso"
         },
         "retry": {
             "success": "Listo. Todos los servidores están al día.",
@@ -129,7 +138,11 @@
             "created": "Creado",
             "accepted": "Aceptado",
             "fingerprint": "Huella de la clave",
-            "serversTitle": "Dónde está la clave"
+            "serversTitle": "Dónde está la clave",
+            "device": "Dispositivo",
+            "noDevicesTitle": "Todavía no hay dispositivos",
+            "noDevicesBody": "Este acceso se aplica a cada dispositivo aprobado del miembro. Añade un dispositivo desde la página del miembro para usarlo.",
+            "member": "Miembro"
         },
         "status": {
             "active": "Esperando",
@@ -164,6 +177,100 @@
             "3d": "3 días",
             "7d": "7 días",
             "30d": "30 días"
+        },
+        "tabs": {
+            "label": "Secciones de acceso",
+            "grants": "Acceso",
+            "members": "Miembros"
+        },
+        "deviceStatus": {
+            "pending": "Esperando aprobación",
+            "active": "Activo",
+            "rejected": "Rechazado",
+            "revoked": "Revocado"
+        },
+        "invite": {
+            "linkTitle": "Enlace para añadir dispositivo",
+            "linkIntro": "Envíaselo a {{name}}. Lo abre en Faro en el dispositivo que quiere añadir, y ese dispositivo obtiene todos los servidores a los que {{name}} tiene acceso.",
+            "onceBodyApproval": "Funciona una vez y caduca el {{when}}. El dispositivo que añada espera tu aprobación en la página del miembro antes de poder conectarse.",
+            "title": "Añadir un dispositivo para {{name}}",
+            "intro": "Crea un enlace de un solo uso. Al abrirlo en Faro, añade ese dispositivo y le da todos los servidores a los que {{name}} tiene acceso.",
+            "validFor": "El enlace es válido durante",
+            "requireApproval": "Exigir mi aprobación antes de que el dispositivo pueda conectarse",
+            "requireApprovalHint": "Recomendado. Si el enlace se filtra, quien lo abra solo crea una solicitud que puedes rechazar.",
+            "create": "Crear enlace"
+        },
+        "member": {
+            "partial": "Guardado, pero fallaron {{count}} cambio(s) de clave. Mira «Dónde están las claves» abajo.",
+            "revokeAllTitle": "¿Revocar todo el acceso de {{name}}?",
+            "revokeAllBody": "Se revocan todos los accesos, dispositivos y enlaces abiertos, y se eliminan todas las claves. Úsalo cuando alguien se va.",
+            "revokeAll": "Revocar todo",
+            "revokedAll": "Todo el acceso revocado",
+            "deleteTitle": "¿Eliminar a {{name}}?",
+            "deleteBody": "Quita al miembro, sus dispositivos y su historial de accesos de esta lista. El registro de auditoría lo conserva.",
+            "delete": "Eliminar miembro",
+            "deleted": "Miembro eliminado",
+            "back": "Todos los miembros",
+            "notFound": "Este miembro ya no existe.",
+            "keyExpiry": "La clave termina",
+            "retry": "Reintentar claves fallidas",
+            "giveAccess": "Dar acceso",
+            "addDeviceNeedsAccess": "Primero da acceso a al menos un servidor",
+            "addDevice": "Añadir dispositivo",
+            "pendingTitle": "Esperando tu aprobación",
+            "pendingBody": "Aprueba solo los dispositivos que esperas. Si dudas, comprueba la huella con la persona: Faro se la muestra.",
+            "accessTitle": "Acceso",
+            "noAccess": "Todavía no tiene acceso. Usa Dar acceso para elegir los servidores a los que puede llegar este miembro.",
+            "devicesTitle": "Dispositivos",
+            "noDevices": "Todavía no hay dispositivos. Añadir dispositivo crea un enlace que el miembro abre en Faro en su portátil.",
+            "invitesTitle": "Enlaces abiertos para añadir dispositivos",
+            "inviteLine": "Creado {{created}}, caduca {{expires}}",
+            "needsApproval": "requiere aprobación",
+            "inviteRevoked": "Enlace revocado",
+            "keysTitle": "Dónde están las claves"
+        },
+        "device": {
+            "revokeTitle": "¿Revocar «{{label}}»?",
+            "rejectTitle": "¿Rechazar «{{label}}»?",
+            "revokeBody": "La clave de este dispositivo se elimina de todos los servidores. Los demás dispositivos del miembro siguen funcionando.",
+            "rejectBody": "El dispositivo nunca obtiene acceso. Envía un nuevo enlace si fue un error.",
+            "revoke": "Revocar dispositivo",
+            "reject": "Rechazar",
+            "approved": "Dispositivo aprobado",
+            "rejected": "Dispositivo rechazado",
+            "revoked": "Dispositivo revocado",
+            "renamed": "Dispositivo renombrado",
+            "label": "Dispositivo",
+            "status": "Estado",
+            "fingerprint": "Huella de la clave",
+            "ip": "Añadido desde",
+            "added": "Añadido",
+            "rename": "Renombrar",
+            "approve": "Aprobar",
+            "renameTitle": "Renombrar dispositivo",
+            "save": "Guardar"
+        },
+        "members": {
+            "loading": "Cargando miembros…",
+            "nameRequired": "El nombre es obligatorio",
+            "name": "Nombre",
+            "devices": "Dispositivos",
+            "pendingCount": "{{count}} por aprobar",
+            "access": "Accesos activos",
+            "health": "Claves",
+            "failing": "{{count}} fallando",
+            "ok": "Bien",
+            "lastDevice": "Último dispositivo añadido",
+            "title": "Miembros",
+            "subtitle": "Personas que obtienen acceso en cada dispositivo que añaden. Da acceso a un miembro una vez y envíale un enlace para cada portátil.",
+            "new": "Nuevo miembro",
+            "emptyTitle": "Todavía no hay miembros",
+            "emptyBody": "Añade a un compañero o contratista como miembro cuando necesite acceso más de una vez o desde más de un dispositivo.",
+            "email": "Correo (opcional)",
+            "emailHint": "Solo como referencia. ServerKit no envía correos a los miembros.",
+            "note": "Nota (opcional)",
+            "creating": "Añadiendo…",
+            "create": "Añadir miembro"
         }
     }
 }

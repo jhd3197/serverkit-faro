@@ -312,6 +312,69 @@
     margin: 0.5rem 0 1rem;
 }
 
+/* Access | Members tabs */
+.skfaro-tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border, #2a2a35);
+}
+
+.skfaro-tabs__tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.85rem;
+    margin-bottom: -1px;
+    border-bottom: 2px solid transparent;
+    color: var(--text-dim, #9a9aa8);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.skfaro-tabs__tab:hover {
+    color: var(--text, #e6e6ef);
+}
+
+.skfaro-tabs__tab.is-active {
+    border-bottom-color: var(--accent-primary, #6d8bff);
+    color: var(--text, #e6e6ef);
+    font-weight: 600;
+}
+
+.skfaro-tabs__count {
+    min-width: 1.25rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: var(--warning-color, #f59e0b);
+    color: #1a1a1a;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1.25rem;
+    text-align: center;
+}
+
+/* pending devices / open invites */
+.skfaro-pending {
+    list-style: none;
+    margin: 0.75rem 0 0;
+    padding: 0;
+}
+
+.skfaro-pending li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 0;
+    border-top: 1px solid var(--border, #2a2a35);
+}
+
+.skfaro-fp {
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+}
+
 @media (max-width: 640px) {
     .skfaro-page__header {
         flex-direction: column;

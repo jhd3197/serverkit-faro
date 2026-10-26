@@ -153,7 +153,15 @@ export default function GrantDetailPage() {
     const finished = grant.status === 'revoked' || grant.status === 'expired';
     const needsRetry = grant.health === 'partial' || grant.health === 'cleanup';
 
+    const memberGrant = Boolean(grant.member_id);
     const columns = [
+        ...(memberGrant ? [{
+            key: 'device_label',
+            header: t('faro.detail.device', 'Device'),
+            sortable: true,
+            hideable: false,
+            render: (row) => row.device_label || '—',
+        }] : []),
         {
             key: 'name',
             header: t('faro.detail.server', 'Server'),
@@ -256,8 +264,20 @@ export default function GrantDetailPage() {
                 </div>
             )}
 
+            {memberGrant && targets.length === 0 && isOpen(grant) && (
+                <div className="skfaro-notice">
+                    <strong>{t('faro.detail.noDevicesTitle', 'No devices yet')}</strong>
+                    <p>{t('faro.detail.noDevicesBody', 'This access applies to every approved device of the member. Add a device from the member page to use it.')}</p>
+                </div>
+            )}
+
             <div className="card skfaro-detail">
                 <dl className="skfaro-detail__grid">
+                    {memberGrant && (
+                        <DetailItem label={t('faro.detail.member', 'Member')}>
+                            <Link to={`/faro/members/${grant.member_id}`}>{grant.member_name}</Link>
+                        </DetailItem>
+                    )}
                     <DetailItem label={t('faro.detail.login', 'SSH login')}>
                         <code>{grant.ssh_username}</code>
                         {grant.create_user ? ` · ${t('faro.detail.createdIfMissing', 'created if missing')}` : ''}
@@ -276,14 +296,16 @@ export default function GrantDetailPage() {
                             : when(grant.revoked_at || grant.expires_at)}
                     </DetailItem>
                     <DetailItem label={t('faro.detail.created', 'Created')}>{when(grant.created_at)}</DetailItem>
-                    <DetailItem label={t('faro.detail.accepted', 'Accepted')}>
+                    {!memberGrant && <DetailItem label={t('faro.detail.accepted', 'Accepted')}>
                         {grant.redeemed_at
                             ? `${when(grant.redeemed_at)}${grant.redeemed_ip ? ` · ${grant.redeemed_ip}` : ''}`
                             : '—'}
-                    </DetailItem>
-                    <DetailItem label={t('faro.detail.fingerprint', 'Key fingerprint')}>
-                        {grant.key_fingerprint ? <code>{grant.key_fingerprint}</code> : '—'}
-                    </DetailItem>
+                    </DetailItem>}
+                    {!memberGrant && (
+                        <DetailItem label={t('faro.detail.fingerprint', 'Key fingerprint')}>
+                            {grant.key_fingerprint ? <code>{grant.key_fingerprint}</code> : '—'}
+                        </DetailItem>
+                    )}
                 </dl>
             </div>
 

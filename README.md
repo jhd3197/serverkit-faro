@@ -60,6 +60,28 @@ ServerKit agent. Revoking or expiring the grant removes exactly that line.
 - **Share access…** on the Faro panel of a service, domain or WordPress site
   opens the form with that site's server already picked (admins only).
 
+### Members and devices
+
+A one-time link is one key for one device. For people who need access again,
+or from more than one machine, add them as a **member** (Access → Members):
+
+1. **Give access** issues grants to the member. No link is created; the
+   access applies to each of the member's approved devices.
+2. **Add device** creates a single-use add-device link. The member opens it in
+   Faro on that machine; Faro generates a key there and uploads the public half.
+3. With **Require my approval** (the default) the device waits on the member
+   page with its fingerprint and source IP until you approve or reject it, so
+   a leaked link only produces a request. Approved, its key goes on every
+   server the member's live grants cover.
+4. **Revoke** a single device (a lost laptop) without touching the others, or
+   **Revoke everything** when someone leaves.
+
+Keys are tracked per device, server and login, and reconciled per member.
+When two of a member's grants want the same line (the same server and login,
+or a shared bridge), they merge into one: the widest options, the union of the
+bridge's `permitopen`, and the latest expiry. Ending one grant never removes a
+key another still needs. Member keys are tagged `faro-device:<id>`.
+
 ### What gets installed
 
 Each key line is tagged `faro-grant:<id>` and restricted:
@@ -97,6 +119,11 @@ Admin routes (admin JWT or `X-API-Key`):
 | `POST /grants/<id>/retry` | retry failed installs (live grant) or failed removals (ended grant) |
 | `POST /grants/<id>/revoke` | revoke and remove the key; calling it again retries removal |
 | `DELETE /grants/<id>` | delete an ended grant once no key is left |
+| `GET/POST /members`, `GET/PATCH/DELETE /members/<id>` | members; `GET` includes devices, grants, invites and key lines |
+| `POST /members/<id>/invites` | `{ttl_hours, require_approval}`; returns `{invite, link}` once |
+| `POST /members/<id>/revoke-all`, `POST /members/<id>/sync` | cut a member off / retry failing key lines |
+| `POST /devices/<id>/approve`, `/reject`, `/revoke`; `PATCH /devices/<id>` | device lifecycle and `{label}` rename |
+| `POST /invites/<id>/revoke` | kill an unused add-device link |
 
 ```bash
 curl -X POST https://panel.example.com/api/v1/faro-grants/grants \
@@ -116,8 +143,8 @@ curl -X POST https://panel.example.com/api/v1/faro-grants/grants \
 ```
 
 `ttl_hours` defaults to 72 and is capped at 720. `jump`, `path`,
-`ssh_username` (default `root`), `create_user` and `restrict_source` are
-optional. The bridge must be a managed server, so its key can be installed and
+`ssh_username` (default `root`), `create_user`, `restrict_source` and
+`member_id` are optional. With `member_id` the reply's `link` is `null`. The bridge must be a managed server, so its key can be installed and
 removed with the grant.
 
 **Limits:**

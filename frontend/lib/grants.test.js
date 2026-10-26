@@ -27,6 +27,12 @@ test('bridge, path, user creation and source restriction are passed through', ()
     });
 });
 
+test('a member grant carries member_id', () => {
+    const { payload } = buildGrantPayload(form({ memberId: '7' }));
+    assert.equal(payload.member_id, 7);
+    assert.equal(buildGrantPayload(form()).payload.member_id, undefined);
+});
+
 test('root never asks to create a user; source restriction needs a bridge', () => {
     const { payload } = buildGrantPayload(form({ createUser: true, restrictSource: true }));
     assert.equal(payload.create_user, undefined);

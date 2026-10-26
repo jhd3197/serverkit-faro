@@ -27,7 +27,9 @@
             "status": "Status",
             "expires": "Ends",
             "created": "Created",
-            "revoke": "Revoke"
+            "revoke": "Revoke",
+            "for": "For",
+            "oneTimeLink": "One-time link"
         },
         "page": {
             "title": "Access",
@@ -74,7 +76,14 @@
             "restrictSourceHint": "Adds from=\"bridge address\" on the granted servers. Leave off if the bridge reaches them over a private network address the panel doesn't know.",
             "creating": "Creating…",
             "submit": "Create link",
-            "cancel": "Cancel"
+            "cancel": "Cancel",
+            "memberSuccess": "Access given to {{name}}",
+            "for": "For",
+            "forLink": "Anyone with a one-time link",
+            "forMemberHint": "Every approved device of this member gets the access. No link is created; add devices from the member page.",
+            "forLinkHint": "Creates a single-use link for one device. For someone who will need access again, add them as a member instead.",
+            "namePlaceholderMember": "Client X sites",
+            "submitMember": "Give access"
         },
         "retry": {
             "success": "Done. Every server is up to date.",
@@ -129,7 +138,11 @@
             "created": "Created",
             "accepted": "Accepted",
             "fingerprint": "Key fingerprint",
-            "serversTitle": "Where the key is"
+            "serversTitle": "Where the key is",
+            "device": "Device",
+            "noDevicesTitle": "No devices yet",
+            "noDevicesBody": "This access applies to every approved device of the member. Add a device from the member page to use it.",
+            "member": "Member"
         },
         "status": {
             "active": "Waiting",
@@ -164,6 +177,100 @@
             "3d": "3 days",
             "7d": "7 days",
             "30d": "30 days"
+        },
+        "tabs": {
+            "label": "Access sections",
+            "grants": "Access",
+            "members": "Members"
+        },
+        "deviceStatus": {
+            "pending": "Waiting for approval",
+            "active": "Active",
+            "rejected": "Rejected",
+            "revoked": "Revoked"
+        },
+        "invite": {
+            "linkTitle": "Add-device link",
+            "linkIntro": "Send this to {{name}}. They open it in Faro on the device they want to add, and that device gets every server {{name}} has access to.",
+            "onceBodyApproval": "It works once and expires {{when}}. The device it adds waits for your approval on the member page before it can connect.",
+            "title": "Add a device for {{name}}",
+            "intro": "Creates a single-use link. Opened in Faro, it adds that device and gives it every server {{name}} has access to.",
+            "validFor": "Link valid for",
+            "requireApproval": "Require my approval before the device can connect",
+            "requireApprovalHint": "Recommended. If the link leaks, whoever opens it only creates a request you can reject.",
+            "create": "Create link"
+        },
+        "member": {
+            "partial": "Saved, but {{count}} key change(s) failed. See \"Where the keys are\" below.",
+            "revokeAllTitle": "Revoke all access for {{name}}?",
+            "revokeAllBody": "Every grant, device and open add-device link is revoked and every key is removed. Use this when someone leaves.",
+            "revokeAll": "Revoke everything",
+            "revokedAll": "All access revoked",
+            "deleteTitle": "Delete {{name}}?",
+            "deleteBody": "Removes the member, their devices and access history from this list. The audit log keeps the record.",
+            "delete": "Delete member",
+            "deleted": "Member deleted",
+            "back": "All members",
+            "notFound": "This member does not exist anymore.",
+            "keyExpiry": "Key ends",
+            "retry": "Retry failed keys",
+            "giveAccess": "Give access",
+            "addDeviceNeedsAccess": "Give access to at least one server first",
+            "addDevice": "Add device",
+            "pendingTitle": "Waiting for your approval",
+            "pendingBody": "Approve only devices you expect. Check the fingerprint with the person if in doubt: Faro shows it on their side.",
+            "accessTitle": "Access",
+            "noAccess": "No access yet. Give access to pick the servers this member can reach.",
+            "devicesTitle": "Devices",
+            "noDevices": "No devices yet. Add device creates a link the member opens in Faro on their laptop.",
+            "invitesTitle": "Open add-device links",
+            "inviteLine": "Created {{created}}, expires {{expires}}",
+            "needsApproval": "needs approval",
+            "inviteRevoked": "Link revoked",
+            "keysTitle": "Where the keys are"
+        },
+        "device": {
+            "revokeTitle": "Revoke \"{{label}}\"?",
+            "rejectTitle": "Reject \"{{label}}\"?",
+            "revokeBody": "This device's key is removed from every server. The member's other devices keep working.",
+            "rejectBody": "The device never gets access. Send a new add-device link if this was a mistake.",
+            "revoke": "Revoke device",
+            "reject": "Reject",
+            "approved": "Device approved",
+            "rejected": "Device rejected",
+            "revoked": "Device revoked",
+            "renamed": "Device renamed",
+            "label": "Device",
+            "status": "Status",
+            "fingerprint": "Key fingerprint",
+            "ip": "Added from",
+            "added": "Added",
+            "rename": "Rename",
+            "approve": "Approve",
+            "renameTitle": "Rename device",
+            "save": "Save"
+        },
+        "members": {
+            "loading": "Loading members…",
+            "nameRequired": "A name is required",
+            "name": "Name",
+            "devices": "Devices",
+            "pendingCount": "{{count}} to approve",
+            "access": "Live access",
+            "health": "Keys",
+            "failing": "{{count}} failing",
+            "ok": "OK",
+            "lastDevice": "Last device added",
+            "title": "Members",
+            "subtitle": "People who get access on every device they add. Give a member access once, then send them an add-device link for each laptop.",
+            "new": "New member",
+            "emptyTitle": "No members yet",
+            "emptyBody": "Add a teammate or contractor as a member when they will need access more than once, or from more than one device.",
+            "email": "Email (optional)",
+            "emailHint": "For your reference. ServerKit does not send email to members.",
+            "note": "Note (optional)",
+            "creating": "Adding…",
+            "create": "Add member"
         }
     }
 }

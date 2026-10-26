@@ -12,6 +12,7 @@ import {
 } from 'serverkit-sdk';
 import { faroGrantsApi } from '../services/faroGrants.js';
 import { grantKind, isOpen, summarize } from '../lib/grants.js';
+import AccessTabs from './AccessTabs.jsx';
 import GrantCreateModal from './GrantCreateModal.jsx';
 import GrantLinkModal from './GrantLinkModal.jsx';
 import { useGrantLabels } from './grantLabels.js';
@@ -31,6 +32,7 @@ export default function AccessPage() {
     const labels = useGrantLabels();
 
     const [grants, setGrants] = useState([]);
+    const [pendingDevices, setPendingDevices] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [busyId, setBusyId] = useState(null);
@@ -42,8 +44,13 @@ export default function AccessPage() {
     const load = useCallback(async (background = false) => {
         if (!background) setLoading(true);
         try {
-            const data = await faroGrantsApi.listGrants();
+            const [data, memberData] = await Promise.all([
+                faroGrantsApi.listGrants(),
+                faroGrantsApi.listMembers().catch(() => null),
+            ]);
             setGrants(Array.isArray(data?.grants) ? data.grants : []);
+            setPendingDevices((memberData?.members || [])
+                .reduce((sum, member) => sum + (member.devices_pending || 0), 0));
             setError(null);
         } catch (err) {
             setError(err.message);
@@ -80,7 +87,11 @@ export default function AccessPage() {
 
     const handleCreated = (grant, link) => {
         setCreateOpen(false);
-        setIssued({ grant, link });
+        if (link) {
+            setIssued({ grant, link });
+        } else {
+            toast.success(t('faro.create.memberSuccess', 'Access given to {{name}}', { name: grant?.member_name }));
+        }
         emitWalkthroughSignal('faro.grant-created', { id: grant?.id });
         load(true);
     };
@@ -118,6 +129,26 @@ export default function AccessPage() {
             sortable: true,
             hideable: false,
             render: (grant) => <strong>{grant.name}</strong>,
+        },
+        {
+            key: 'member_name',
+            header: t('faro.table.for', 'For'),
+            sortable: true,
+            sortValue: (grant) => grant.member_name || '',
+            render: (grant) => (grant.member_id
+                ? (
+                    <a
+                        href={`/faro/members/${grant.member_id}`}
+                        onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            navigate(`/faro/members/${grant.member_id}`);
+                        }}
+                    >
+                        {grant.member_name}
+                    </a>
+                )
+                : <span className="skfaro-muted">{t('faro.table.oneTimeLink', 'One-time link')}</span>),
         },
         {
             key: 'servers',
@@ -190,6 +221,7 @@ export default function AccessPage() {
 
     return (
         <div className="skfaro-page">
+            <AccessTabs pendingDevices={pendingDevices} />
             <div className="skfaro-page__header">
                 <div>
                     <h2 className="skfaro-page__title">{t('faro.page.title', 'Access')}</h2>
@@ -256,7 +288,7 @@ export default function AccessPage() {
             <GrantLinkModal
                 open={Boolean(issued)}
                 link={issued?.link}
-                grant={issued?.grant}
+                expiresAt={issued?.grant?.expires_at}
                 onClose={() => setIssued(null)}
             />
         </div>
