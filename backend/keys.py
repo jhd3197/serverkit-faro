@@ -1,6 +1,7 @@
-"""Install/remove a grant's key on its servers via the agent.
+"""Install/remove access keys on servers via the agent.
 
-Shared by the blueprint (redeem, revoke, extend, retry) and the sweeper job.
+Shared by the blueprint (redeem, revoke, extend, retry), member
+reconciliation (:mod:`members`) and the sweeper job.
 Every operation goes through the agent's ``ssh:keys:add`` / ``ssh:keys:remove``
 actions (manifest permissions ``agent.command:ssh:keys:*``; agent capability
 ``ssh.keys``). The agent finds the user's home, writes as that user, keeps
@@ -8,8 +9,9 @@ actions (manifest permissions ``agent.command:ssh:keys:*``; agent capability
 file as empty, so nothing here reads or rewrites an authorized_keys file
 itself.
 
-Each call updates the :class:`FaroGrantTarget` row it acted on (status, error,
-attempts) and never raises; callers commit.
+Each call updates the row it acted on — a :class:`FaroGrantTarget` or a
+:class:`FaroDeviceKey` — (status, error, consecutive failed attempts) and never
+raises; callers commit.
 """
 from datetime import datetime
 
@@ -50,8 +52,11 @@ def describe_error(err):
 
 
 def targets_for(grant):
-    """The grant's FaroGrantTarget rows, creating them for grants issued
-    before per-server state existed (servers_json + a managed jump)."""
+    """A one-time grant's FaroGrantTarget rows, creating them for grants
+    issued before per-server state existed (servers_json + a managed jump).
+    Member grants have none: their keys are FaroDeviceKey rows."""
+    if grant.member_id:
+        return []
     rows = FaroGrantTarget.query.filter_by(grant_id=grant.id).order_by(
         FaroGrantTarget.id).all()
     if rows:
@@ -94,49 +99,69 @@ def _username_for(grant, target):
     return grant.ssh_username
 
 
-def install(grant, target, all_targets, user_id=None):
-    """Install (or refresh the options/expiry of) the grant key on one
-    server. Returns None on success or an error string."""
-    target.attempts = (target.attempts or 0) + 1
-    target.updated_at = datetime.utcnow()
+def add_key(row, username, key_line, options, expires_at, ensure_user=False,
+            user_id=None):
+    """Install (or refresh the options/expiry of) ``key_line`` for
+    ``username`` on ``row.server_id``, recording the outcome on ``row`` (a
+    FaroGrantTarget or FaroDeviceKey). Returns None or an error string."""
+    row.attempts = (row.attempts or 0) + 1
+    row.updated_at = datetime.utcnow()
     try:
         params = {
-            'user': _username_for(grant, target),
-            'key': grants_lib.grant_key_line(grant.public_key, grant.id),
-            'options': key_options(grant, target, all_targets),
-            'expires_at': int((grant.expires_at - datetime(1970, 1, 1)).total_seconds()),
-            'ensure_user': bool(grant.options().get('create_user')),
+            'user': username,
+            'key': key_line,
+            'options': options,
+            'expires_at': int((expires_at - datetime(1970, 1, 1)).total_seconds()),
+            'ensure_user': bool(ensure_user),
         }
-        result = fleet().run(target.server_id, 'ssh:keys:add', params,
+        result = fleet().run(row.server_id, 'ssh:keys:add', params,
                              timeout=30.0, user_id=user_id, requires=CAPABILITY)
     except AgentCommandError as e:
-        return _fail(target, KEY_FAILED, describe_error(e))
+        return _fail(row, KEY_FAILED, describe_error(e))
     except Exception as e:  # noqa: BLE001 - per-server failures are collected
-        return _fail(target, KEY_FAILED, describe_error(e))
-    target.key_status = KEY_INSTALLED
-    target.error = None
-    target.installed_at = datetime.utcnow()
-    target.expiry_enforced = bool((result or {}).get('expiry_applied'))
+        return _fail(row, KEY_FAILED, describe_error(e))
+    row.key_status = KEY_INSTALLED
+    row.error = None
+    row.attempts = 0
+    row.installed_at = datetime.utcnow()
+    row.expiry_enforced = bool((result or {}).get('expiry_applied'))
     return None
+
+
+def remove_key(row, username, key_line, user_id=None):
+    """Remove ``key_line`` for ``username`` from ``row.server_id``, recording
+    the outcome on ``row``. Returns None or an error string."""
+    row.attempts = (row.attempts or 0) + 1
+    row.updated_at = datetime.utcnow()
+    try:
+        fleet().run(row.server_id, 'ssh:keys:remove', {
+            'user': username,
+            'key': key_line,
+        }, timeout=30.0, user_id=user_id, requires=CAPABILITY)
+    except AgentCommandError as e:
+        return _fail(row, KEY_REMOVE_FAILED, describe_error(e))
+    except Exception as e:  # noqa: BLE001
+        return _fail(row, KEY_REMOVE_FAILED, describe_error(e))
+    row.key_status = KEY_REMOVED
+    row.error = None
+    row.attempts = 0
+    row.removed_at = datetime.utcnow()
+    return None
+
+
+def install(grant, target, all_targets, user_id=None):
+    """Install a one-time grant's key on one of its servers."""
+    return add_key(target, _username_for(grant, target),
+                   grants_lib.grant_key_line(grant.public_key, grant.id),
+                   key_options(grant, target, all_targets), grant.expires_at,
+                   ensure_user=grant.options().get('create_user'), user_id=user_id)
 
 
 def remove(grant, target, user_id=None):
-    """Remove the grant key from one server. Returns None or an error."""
-    target.attempts = (target.attempts or 0) + 1
-    target.updated_at = datetime.utcnow()
-    try:
-        fleet().run(target.server_id, 'ssh:keys:remove', {
-            'user': _username_for(grant, target),
-            'key': grants_lib.grant_key_line(grant.public_key, grant.id),
-        }, timeout=30.0, user_id=user_id, requires=CAPABILITY)
-    except AgentCommandError as e:
-        return _fail(target, KEY_REMOVE_FAILED, describe_error(e))
-    except Exception as e:  # noqa: BLE001
-        return _fail(target, KEY_REMOVE_FAILED, describe_error(e))
-    target.key_status = KEY_REMOVED
-    target.error = None
-    target.removed_at = datetime.utcnow()
-    return None
+    """Remove a one-time grant's key from one of its servers."""
+    return remove_key(target, _username_for(grant, target),
+                      grants_lib.grant_key_line(grant.public_key, grant.id),
+                      user_id=user_id)
 
 
 def remove_all(grant, targets, user_id=None):
@@ -153,9 +178,9 @@ def remove_all(grant, targets, user_id=None):
     return failed
 
 
-def _fail(target, status, message):
-    target.key_status = status
-    target.error = message
-    log.warning('faro grant key op failed on %s (%s): %s',
-                target.name, target.server_id, message)
+def _fail(row, status, message):
+    row.key_status = status
+    row.error = message
+    log.warning('faro key op failed on %s (%s): %s',
+                row.name, row.server_id, message)
     return message

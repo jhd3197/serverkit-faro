@@ -178,6 +178,18 @@ def grant_key_line(public_key, grant_id):
     return f'{key_type} {blob} faro-grant:{grant_id}'
 
 
+def device_key_line(public_key, device_id):
+    """The key line installed for a member's device, tagged
+    ``faro-device:<id>`` (one device key serves every grant of the member)."""
+    key_type, blob = public_key.split()[:2]
+    return f'{key_type} {blob} faro-device:{device_id}'
+
+
+def from_option(hosts):
+    """``from="a,b"`` limiting a key to the given source hosts."""
+    return 'from="' + ','.join(validate_host(h) for h in sorted(set(hosts))) + '"'
+
+
 def key_fingerprint(public_key):
     """OpenSSH-style ``SHA256:...`` fingerprint of a key line, or None."""
     if not public_key:

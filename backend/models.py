@@ -7,11 +7,18 @@ Tables, namespaced ``ext_serverkit_faro_*`` (dash -> underscore) so
   the target server bundle, the SSH username/path/jump shape, the installed
   public key (kept so revoke/expiry can remove that exact line), and the
   lifecycle status (active -> redeemed | revoked | expired).
-* :class:`FaroGrantTarget` — one row per server the grant's key goes on (every
-  target, plus the bridge/jump server when there is one), with that server's
-  key state. This is what makes partial installs retryable and what keeps a
-  failed removal visible (and retried by the sweeper) instead of silently
-  leaving a key behind on a grant that reads "revoked".
+* :class:`FaroGrantTarget` — one row per server a one-time grant's key goes
+  on (every target, plus the bridge/jump server when there is one), with that
+  server's key state. This is what makes partial installs retryable and what
+  keeps a failed removal visible (and retried by the sweeper) instead of
+  silently leaving a key behind on a grant that reads "revoked".
+* :class:`FaroMember` — a person. Grants can belong to a member instead of
+  carrying their own one-time link; the member's devices then get access.
+* :class:`FaroDevice` — one key a member uploaded from Faro (a laptop, say),
+  optionally waiting for an admin's approval before it is installed anywhere.
+* :class:`FaroInvite` — a single-use "add a device" link for a member.
+* :class:`FaroDeviceKey` — one device key on one server for one login: the
+  reconciled, per-line install state for member access (see :mod:`members`).
 
 Registration mirrors the serverkit-analytics pattern: importing this module
 defines the tables on the shared metadata as a side effect; the manifest's
@@ -59,6 +66,11 @@ class FaroGrant(db.Model):
     # sha256 hex of the redemption token. Unique + indexed for the public
     # endpoints' hot-path lookup. The raw token only ever lives in the link.
     token_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
+
+    # Owning member (added in 1.2). NULL for a one-time link grant, which
+    # carries its own token and key; a member grant has neither and gives
+    # access to the member's devices instead.
+    member_id = db.Column(db.Integer, nullable=True, index=True)
 
     # One username per grant (v1): the login the uploaded key is installed for.
     ssh_username = db.Column(db.String(64), nullable=False, default='root')
@@ -135,6 +147,7 @@ class FaroGrant(db.Model):
         data = {
             'id': self.id,
             'name': self.name,
+            'member_id': self.member_id,
             'ssh_username': self.ssh_username,
             'default_path': self.default_path,
             'servers': self.server_list(),
@@ -193,6 +206,156 @@ class FaroGrantTarget(db.Model):
         }
 
 
+#: Device / invite states.
+DEVICE_PENDING = 'pending'      # uploaded, waiting for an admin's approval
+DEVICE_ACTIVE = 'active'
+DEVICE_REJECTED = 'rejected'
+DEVICE_REVOKED = 'revoked'
+
+INVITE_ACTIVE = 'active'
+INVITE_USED = 'used'
+INVITE_REVOKED = 'revoked'
+INVITE_EXPIRED = 'expired'
+
+
+class FaroMember(db.Model):
+    __tablename__ = 'ext_serverkit_faro_members'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    email = db.Column(db.String(255), nullable=True)
+    note = db.Column(db.Text, nullable=True)
+    created_by = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'email': self.email,
+            'note': self.note,
+            'created_by': self.created_by,
+            'created_at': _iso(self.created_at),
+        }
+
+
+class FaroDevice(db.Model):
+    __tablename__ = 'ext_serverkit_faro_devices'
+
+    id = db.Column(db.Integer, primary_key=True)
+    member_id = db.Column(db.Integer, nullable=False, index=True)
+    invite_id = db.Column(db.Integer, nullable=True)
+    label = db.Column(db.String(255), nullable=False)
+    public_key = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(16), nullable=False, default=DEVICE_PENDING, index=True)
+    redeemed_ip = db.Column(db.String(64), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    approved_at = db.Column(db.DateTime, nullable=True)
+    approved_by = db.Column(db.Integer, nullable=True)
+    revoked_at = db.Column(db.DateTime, nullable=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'member_id': self.member_id,
+            'label': self.label,
+            'status': self.status,
+            'fingerprint': grants_lib.key_fingerprint(self.public_key),
+            'key_type': (self.public_key or '').split(' ')[0] or None,
+            'redeemed_ip': self.redeemed_ip,
+            'created_at': _iso(self.created_at),
+            'approved_at': _iso(self.approved_at),
+            'approved_by': self.approved_by,
+            'revoked_at': _iso(self.revoked_at),
+        }
+
+
+class FaroInvite(db.Model):
+    __tablename__ = 'ext_serverkit_faro_invites'
+
+    id = db.Column(db.Integer, primary_key=True)
+    member_id = db.Column(db.Integer, nullable=False, index=True)
+    # sha256 of the redemption token, same scheme as grants.
+    token_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    require_approval = db.Column(db.Boolean, nullable=False, default=True)
+    status = db.Column(db.String(16), nullable=False, default=INVITE_ACTIVE, index=True)
+    device_id = db.Column(db.Integer, nullable=True)
+    created_by = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used_at = db.Column(db.DateTime, nullable=True)
+
+    def is_past_expiry(self, now=None):
+        return (now or datetime.utcnow()) >= self.expires_at
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'member_id': self.member_id,
+            'require_approval': bool(self.require_approval),
+            'status': self.status,
+            'device_id': self.device_id,
+            'created_by': self.created_by,
+            'created_at': _iso(self.created_at),
+            'expires_at': _iso(self.expires_at),
+            'used_at': _iso(self.used_at),
+        }
+
+
+class FaroDeviceKey(db.Model):
+    """One device key on one server for one login — the unit the agent
+    actually installs. Several member grants can want the same line (same
+    server and login, or a shared bridge); reconciliation merges them into one
+    row, so revoking one grant never pulls a key another grant still needs."""
+    __tablename__ = 'ext_serverkit_faro_device_keys'
+    __table_args__ = (
+        db.UniqueConstraint('device_id', 'server_id', 'username',
+                            name='uq_ext_serverkit_faro_device_key'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    member_id = db.Column(db.Integer, nullable=False, index=True)
+    device_id = db.Column(db.Integer, nullable=False, index=True)
+    server_id = db.Column(db.String(64), nullable=False)
+    username = db.Column(db.String(64), nullable=False)
+    name = db.Column(db.String(255), nullable=True)
+    host = db.Column(db.String(255), nullable=True)
+    role = db.Column(db.String(16), nullable=False, default=ROLE_TARGET)
+    key_status = db.Column(db.String(16), nullable=False, default=KEY_PENDING)
+    error = db.Column(db.Text, nullable=True)
+    # What was last installed, so reconciliation only calls the agent again
+    # when the options or expiry actually change.
+    options_json = db.Column(db.Text, nullable=True)
+    expires_at = db.Column(db.DateTime, nullable=True)
+    expiry_enforced = db.Column(db.Boolean, nullable=False, default=False)
+    attempts = db.Column(db.Integer, nullable=False, default=0)
+    installed_at = db.Column(db.DateTime, nullable=True)
+    removed_at = db.Column(db.DateTime, nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'member_id': self.member_id,
+            'device_id': self.device_id,
+            'server_id': self.server_id,
+            'username': self.username,
+            'name': self.name,
+            'host': self.host,
+            'role': self.role,
+            'key_status': self.key_status,
+            'error': self.error,
+            'expiry_enforced': bool(self.expiry_enforced),
+            'attempts': self.attempts or 0,
+            'expires_at': _iso(self.expires_at),
+            'installed_at': _iso(self.installed_at),
+            'removed_at': _iso(self.removed_at),
+            'updated_at': _iso(self.updated_at),
+            # Set by members.grant_rows for display; not a column.
+            'device_label': getattr(self, 'device_label', None),
+        }
+
+
 def grant_health(grant, targets):
     """One word for the list view, on top of ``status``:
 
@@ -222,6 +385,7 @@ _ADDED_COLUMNS = (
     ('options_json', 'TEXT'),
     ('redeemed_ip', 'VARCHAR(64)'),
     ('revoked_at', 'DATETIME'),
+    ('member_id', 'INTEGER'),
 )
 
 
@@ -250,4 +414,5 @@ def register(db):  # noqa: A002 - signature dictated by the platform (fn(db))
     convenient for tests.
     """
     _ensure_columns(db)
-    return [FaroGrant, FaroGrantTarget]
+    return [FaroGrant, FaroGrantTarget, FaroMember, FaroDevice, FaroInvite,
+            FaroDeviceKey]

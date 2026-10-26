@@ -30,9 +30,9 @@ from app.models.server import Server
 from app.plugins_sdk import audit, logger
 from app.utils.client_ip import get_client_ip
 
-from . import grants_lib, keys
+from . import grants_lib, keys, members
 from .config import cfg_int
-from .models import (FINISHED_STATUSES, FaroGrant, FaroGrantTarget,
+from .models import (FINISHED_STATUSES, FaroGrant, FaroGrantTarget, FaroMember,
                      KEY_FAILED, KEY_INSTALLED, KEY_PENDING, KEY_REMOVE_FAILED,
                      ROLE_JUMP, ROLE_TARGET, STATUS_ACTIVE, STATUS_EXPIRED,
                      STATUS_REDEEMED, STATUS_REVOKED, grant_health)
@@ -100,10 +100,31 @@ def _ttl_hours(value):
     return max(1, min(MAX_TTL_HOURS, hours))
 
 
-def _grant_json(grant, targets=None):
+def _grant_json(grant, targets=None, member_names=None):
+    """Admin JSON for a grant with its per-server key state and health.
+
+    One-time grants report their FaroGrantTarget rows; member grants report
+    the member's device-key rows on the grant's servers (one per device).
+    """
+    if grant.member_id:
+        rows = members.grant_rows(grant)
+        data = grant.to_dict(targets=rows)
+        data['health'] = members.grant_health(grant, rows)
+        if member_names is None:
+            member = db.session.get(FaroMember, grant.member_id)
+            data['member_name'] = member.name if member else None
+        else:
+            data['member_name'] = member_names.get(grant.member_id)
+        return data
     if targets is None:
         targets = keys.targets_for(grant)
-    return grant.to_dict(targets=targets)
+    data = grant.to_dict(targets=targets)
+    data['member_name'] = None
+    return data
+
+
+def _member_failures(failures):
+    return [{'name': f['name'], 'error': f['error']} for f in failures]
 
 
 def _get_grant_or_404(grant_id):
@@ -208,6 +229,15 @@ def create_grant():
     if path and (not path.startswith('/') or len(path) > 512):
         return jsonify({'error': 'path must be an absolute path'}), 400
 
+    member = None
+    if data.get('member_id') not in (None, ''):
+        try:
+            member = db.session.get(FaroMember, int(data['member_id']))
+        except (TypeError, ValueError):
+            member = None
+        if member is None:
+            return jsonify({'error': 'unknown member'}), 400
+
     jump_in = data.get('jump') or None
     jump_server_id = None
     jump_username = None
@@ -274,14 +304,18 @@ def create_grant():
             'username': jump_username,
         }
 
+    # A member grant has no link of its own (the member's devices get the
+    # access), so its token is never revealed — it only fills the column.
     token = grants_lib.new_token()
     now = datetime.utcnow()
     grant = FaroGrant(
         name=name,
+        member_id=member.id if member else None,
         token_hash=grants_lib.hash_token(token),
         ssh_username=ssh_username,
         default_path=path,
-        status=STATUS_ACTIVE,
+        status=STATUS_REDEEMED if member else STATUS_ACTIVE,
+        redeemed_at=now if member else None,
         created_by=_current_user_id(),
         created_at=now,
         expires_at=now + timedelta(hours=ttl_hours),
@@ -294,6 +328,20 @@ def create_grant():
     })
     db.session.add(grant)
     db.session.flush()
+
+    if member:
+        failed = members.reconcile(member.id, user_id=_current_user_id())
+        db.session.commit()
+        audit('faro.grant.issued', 'faro_grant', grant.id, details={
+            'name': name,
+            'member': member.name,
+            'servers': [s['name'] for s in servers_snapshot],
+            'bridge': jump['name'] if jump else None,
+            'ssh_username': ssh_username,
+            'ttl_hours': ttl_hours,
+        })
+        return jsonify({'grant': _grant_json(grant), 'link': None,
+                        'failed': _member_failures(failed)}), 201
 
     targets = [FaroGrantTarget(grant_id=grant.id, server_id=s['server_id'],
                                name=s['name'], host=s['host'], role=ROLE_TARGET)
@@ -329,14 +377,18 @@ def list_grants():
         ).order_by(FaroGrantTarget.id).all()
         for row in rows:
             by_grant.setdefault(row.grant_id, []).append(row)
+    names = {m.id: m.name for m in FaroMember.query.all()}
     out = []
     backfilled = False
     for grant in grants:
+        if grant.member_id:
+            out.append(_grant_json(grant, member_names=names))
+            continue
         targets = by_grant.get(grant.id)
         if targets is None:
             targets = keys.targets_for(grant)
             backfilled = True
-        out.append(grant.to_dict(targets=targets))
+        out.append(_grant_json(grant, targets=targets, member_names=names))
     if backfilled:
         db.session.commit()
     return jsonify({'grants': out}), 200
@@ -365,21 +417,23 @@ def revoke_grant(grant_id):
     grant, err = _get_grant_or_404(grant_id)
     if err:
         return err
-    targets = keys.targets_for(grant)
     was = grant.status
     if grant.status != STATUS_REVOKED:
         grant.status = STATUS_REVOKED
         grant.revoked_at = datetime.utcnow()
-    failed = keys.remove_all(grant, targets, user_id=_current_user_id())
+    if grant.member_id:
+        failed = _member_failures(members.reconcile(grant.member_id, user_id=_current_user_id()))
+    else:
+        failed = keys.remove_all(grant, keys.targets_for(grant), user_id=_current_user_id())
     db.session.commit()
 
     if was != STATUS_REVOKED:
         audit('faro.grant.revoked', 'faro_grant', grant.id, details={
             'name': grant.name,
-            'key_removed': bool(grant.public_key) and not failed,
+            'key_removed': not failed,
             'failures': failed,
         })
-    return jsonify({'grant': grant.to_dict(targets=targets), 'failed': failed}), 200
+    return jsonify({'grant': _grant_json(grant), 'failed': failed}), 200
 
 
 @bp.route('/grants/<int:grant_id>/extend', methods=['POST'])
@@ -402,7 +456,9 @@ def extend_grant(grant_id):
     grant.expires_at = datetime.utcnow() + timedelta(hours=ttl_hours)
     targets = keys.targets_for(grant)
     failed = []
-    if grant.status == STATUS_REDEEMED and grant.public_key:
+    if grant.member_id:
+        failed = _member_failures(members.reconcile(grant.member_id, user_id=_current_user_id()))
+    elif grant.status == STATUS_REDEEMED and grant.public_key:
         for target in targets:
             if target.key_status == KEY_INSTALLED:
                 error = keys.install(grant, target, targets, user_id=_current_user_id())
@@ -416,7 +472,7 @@ def extend_grant(grant_id):
         'to': grant.expires_at.isoformat(),
         'failures': failed,
     })
-    return jsonify({'grant': grant.to_dict(targets=targets), 'failed': failed}), 200
+    return jsonify({'grant': _grant_json(grant, targets=targets), 'failed': failed}), 200
 
 
 @bp.route('/grants/<int:grant_id>/retry', methods=['POST'])
@@ -430,7 +486,9 @@ def retry_grant(grant_id):
     targets = keys.targets_for(grant)
     user_id = _current_user_id()
     failed = []
-    if grant.status in FINISHED_STATUSES:
+    if grant.member_id:
+        failed = _member_failures(members.reconcile(grant.member_id, user_id=user_id))
+    elif grant.status in FINISHED_STATUSES:
         failed = keys.remove_all(grant, targets, user_id=user_id)
     elif grant.status == STATUS_REDEEMED and grant.public_key:
         for target in targets:
@@ -441,7 +499,7 @@ def retry_grant(grant_id):
     else:
         return jsonify({'error': 'nothing to retry until the link is redeemed'}), 409
     db.session.commit()
-    return jsonify({'grant': grant.to_dict(targets=targets), 'failed': failed}), 200
+    return jsonify({'grant': _grant_json(grant, targets=targets), 'failed': failed}), 200
 
 
 @bp.route('/grants/<int:grant_id>', methods=['DELETE'])
@@ -455,7 +513,9 @@ def delete_grant(grant_id):
     if grant.status not in FINISHED_STATUSES:
         return jsonify({'error': 'revoke the grant before deleting it'}), 409
     targets = keys.targets_for(grant)
-    if grant_health(grant, targets) == 'cleanup':
+    health = (members.grant_health(grant, members.grant_rows(grant)) if grant.member_id
+              else grant_health(grant, targets))
+    if health == 'cleanup':
         return jsonify({'error': 'the key is still installed on some servers; '
                                  'retry the cleanup first'}), 409
     for target in targets:
@@ -479,7 +539,7 @@ def _public_grant_or_error(token):
     """
     grant = FaroGrant.query.filter_by(
         token_hash=grants_lib.hash_token(token)).first()
-    if not grant:
+    if not grant or grant.member_id:
         return None, (jsonify({'error': 'unknown grant'}), 404)
     if grant.status == STATUS_REVOKED:
         return None, (jsonify({'error': 'grant revoked'}), 410)
@@ -497,6 +557,10 @@ def grant_manifest(token):
     """Faro Grant Protocol step 1: manifest fetch (pre-consent)."""
     if not _rate_ok(get_client_ip()):
         return jsonify({'error': 'rate limited'}), 429
+    from . import members_api
+    invite = members_api.invite_for_token(token)
+    if invite is not None:
+        return members_api.invite_manifest_response(invite, _panel_base_url())
     grant, err = _public_grant_or_error(token)
     if err:
         return err
@@ -524,6 +588,10 @@ def grant_install_key(token):
     """
     if not _rate_ok(get_client_ip()):
         return jsonify({'error': 'rate limited'}), 429
+    from . import members_api
+    invite = members_api.invite_for_token(token)
+    if invite is not None:
+        return members_api.invite_key_response(invite)
     grant, err = _public_grant_or_error(token)
     if err:
         return err

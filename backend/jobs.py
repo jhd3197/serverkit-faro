@@ -16,14 +16,18 @@ the platform anyway).
      leaves a working key behind.
   3. Settle grants stuck in 'redeeming' (the worker died mid-install) as
      'redeemed', so whatever keys landed are tracked and revocable.
+  4. Members: reconcile anyone whose grant just expired, or who has a key
+     install/removal still failing (same attempt cap), and expire unused
+     invite links.
 """
 from datetime import datetime, timedelta
 
 from app import db
 from app.plugins_sdk import audit, logger
 
-from . import keys
-from .models import (FINISHED_STATUSES, FaroGrant, FaroGrantTarget,
+from . import keys, members
+from .models import (FINISHED_STATUSES, FaroDeviceKey, FaroGrant, FaroGrantTarget,
+                     FaroInvite, INVITE_ACTIVE, INVITE_EXPIRED, KEY_FAILED,
                      KEY_REMOVE_FAILED, STATUS_ACTIVE, STATUS_EXPIRED,
                      STATUS_REDEEMED)
 
@@ -51,16 +55,20 @@ def expire_grants(job):
 def _run():
     now = datetime.utcnow()
     expired, key_failures, retried, settled = 0, [], 0, 0
+    member_ids = set()
 
     due = FaroGrant.query.filter(
         FaroGrant.status.in_([STATUS_ACTIVE, STATUS_REDEEMED]),
         FaroGrant.expires_at < now,
     ).all()
     for grant in due:
-        targets = keys.targets_for(grant)
         grant.status = STATUS_EXPIRED
-        for failure in keys.remove_all(grant, targets, user_id=grant.created_by):
-            key_failures.append({'grant_id': grant.id, **failure})
+        if grant.member_id:
+            member_ids.add(grant.member_id)
+        else:
+            targets = keys.targets_for(grant)
+            for failure in keys.remove_all(grant, targets, user_id=grant.created_by):
+                key_failures.append({'grant_id': grant.id, **failure})
         expired += 1
         audit('faro.grant.expired', 'faro_grant', grant.id,
               details={'name': grant.name}, user_id=grant.created_by)
@@ -90,6 +98,26 @@ def _run():
         grant.status = STATUS_REDEEMED
         settled += 1
     if stuck:
+        db.session.commit()
+
+    # Members: anyone whose grant just expired, plus anyone with a key line
+    # still failing to install or remove (under the attempt cap).
+    failing = (FaroDeviceKey.query
+               .filter(FaroDeviceKey.key_status.in_([KEY_FAILED, KEY_REMOVE_FAILED]),
+                       FaroDeviceKey.attempts < MAX_REMOVE_ATTEMPTS)
+               .with_entities(FaroDeviceKey.member_id).distinct().all())
+    member_ids |= {row[0] for row in failing}
+    for member_id in sorted(member_ids):
+        for failure in members.reconcile(member_id, max_attempts=MAX_REMOVE_ATTEMPTS):
+            key_failures.append({'member_id': member_id, **failure})
+        retried += 1
+        db.session.commit()
+
+    stale = FaroInvite.query.filter(FaroInvite.status == INVITE_ACTIVE,
+                                    FaroInvite.expires_at < now).all()
+    for invite in stale:
+        invite.status = INVITE_EXPIRED
+    if stale:
         db.session.commit()
 
     if key_failures:

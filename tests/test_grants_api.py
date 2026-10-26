@@ -100,7 +100,8 @@ class FakeFleet:
         return " ".join(key.split()[:2]) in self.keys.get((server_id, user), {})
 
 
-class GrantApiTests(unittest.TestCase):
+class GrantHarness(unittest.TestCase):
+    """Panel app + fake fleet + three servers; shared by the member tests."""
 
     @classmethod
     def setUpClass(cls):
@@ -161,6 +162,9 @@ class GrantApiTests(unittest.TestCase):
     def grant(self, grant_id):
         return self.client.get(f"/api/v1/faro-grants/grants/{grant_id}",
                                headers=self.auth()).get_json()["grant"]
+
+
+class GrantApiTests(GrantHarness):
 
     # ---- issue ----
     def test_issue_validates_input(self):

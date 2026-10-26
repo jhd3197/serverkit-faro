@@ -199,6 +199,15 @@ class KeyOptionTests(unittest.TestCase):
         self.assertEqual(grants_lib.target_key_options('203.0.113.9', True)[-1],
                          'from="203.0.113.9"')
 
+    def test_device_key_line_and_from_option(self):
+        blob = ED25519.split()[1]
+        self.assertEqual(grants_lib.device_key_line(ED25519, 3),
+                         f'ssh-ed25519 {blob} faro-device:3')
+        self.assertEqual(grants_lib.from_option(['10.0.0.2', '10.0.0.1', '10.0.0.2']),
+                         'from="10.0.0.1,10.0.0.2"')
+        with self.assertRaises(ValueError):
+            grants_lib.from_option(['a"b'])
+
     def test_jump_options_limit_forwarding_to_targets(self):
         opts = grants_lib.jump_key_options(['10.0.0.5', '2001:db8::1'])
         self.assertIn('no-pty', opts)
